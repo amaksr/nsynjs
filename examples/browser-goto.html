@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Example of using Array.map polyfill</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <script src="../nsynjs.js"></script>
+    <script>
+
+        function myFunc() {
+            var i=2<<2;
+            label_1: console.log('loop i='+i);
+            if(i++<10)
+                nsynjs.goto(new String('label_1'));
+        }
+
+        nsynjs.run(myFunc,this,function () {
+            console.log('done');
+        });
+
+    </script>
+</head>
+<body>
+    Please open developers console to see the output.
+</body>
+</html>

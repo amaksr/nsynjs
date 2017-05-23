@@ -1,0 +1,26 @@
+{
+  "name": "nsynjs",
+  "version": "0.0.1",
+  "description": "Synchronous JavaScript execution",
+  "main": "nsynjs.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "node test/tests_node.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/amaksr/nsynjs.git"
+  },
+  "keywords": [
+    "synchronous",
+    "javascript"
+  ],
+  "author": "Alexei Maximov <amaksr@gmail.com>",
+  "license": "AGPLv3",
+  "bugs": {
+    "url": "https://github.com/amaksr/nsynjs/issues"
+  },
+  "homepage": "https://github.com/amaksr/nsynjs"
+}

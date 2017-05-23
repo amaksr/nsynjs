@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Example of using Array.map polyfill</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <script src="../nsynjs.js"></script>
+    <script>
+
+        function myFunc() {
+            var synMap = function(cb) {
+                var res=new Array(this.length);
+                for(var i=0; i<res.length; i++)
+                    res[i] = cb(this[i]);
+                return res;
+            };
+
+            // make Array.map nsynjs-compatible
+            Array.prototype.map.synjsBin = synMap.synjsBin;
+
+            [1,2,3,7].map(function (e) {
+                console.log('element',e);
+            });
+        }
+
+
+        nsynjs.run(myFunc,this,function () {
+            console.log('done');
+        });
+
+    </script>
+</head>
+<body>
+    Please open developers console to see the output.
+</body>
+</html>
