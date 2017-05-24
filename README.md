@@ -28,31 +28,35 @@ It accepts function pointer as an input parameter, and performs following:
 
 With nsynjs you can write code like this:
  
-    var i=0;
-    while(i<5) {
-        wait(1000); <<-- long-running function with callback
-        console.log(i, new Date());
-        i++;
-    }
-    
+```javascript
+var i=0;
+while(i<5) {
+    wait(1000); <<-- long-running function with callback
+    console.log(i, new Date());
+    i++;
+}
+```
+
 Or like this:
 
-    function getStats(userId) {
-        var res;
-        try {
-            res = { <<-- expression with few long-running functions, evaluated one after another
-                friends: dbQuery("select * from firends where user_id = "+userId).data,
-                comments: dbQuery("select * from comments where user_id = "+userId).data,
-                likes: dbQuery("select * from likes where user_id = "+userId).data,
-            }
+```javascript
+function getStats(userId) {
+    var res;
+    try {
+        res = { <<-- expression with few long-running functions, evaluated one after another
+            friends: dbQuery("select * from firends where user_id = "+userId).data,
+            comments: dbQuery("select * from comments where user_id = "+userId).data,
+            likes: dbQuery("select * from likes where user_id = "+userId).data,
         }
-        catch(e) {
-            res = {
-                error: e
-            }
-        }
-        return res;
     }
+    catch(e) {
+        res = {
+            error: e
+        }
+    }
+    return res;
+}
+```
 
 ## How to start ##
 
@@ -83,71 +87,79 @@ All nsynjs-aware wrapper should have 'synjsHasCallback' property set to true.
 
 Here is an example of simple wrapper to setTimeout:
 
-    var wait = function (ctx, ms) {
-        setTimeout(function () {
-            ctx.resume(); <<-- resume execution of nsynjs pseudo-thread, referred by ctx
-        }, ms);
-    };
-    wait.synjsHasCallback = true; <<-- indicates that nsynjs should stop and wait when calling this function
-    
+```javascript
+var wait = function (ctx, ms) {
+    setTimeout(function () {
+        ctx.resume(); <<-- resume execution of nsynjs pseudo-thread, referred by ctx
+    }, ms);
+};
+wait.synjsHasCallback = true; <<-- indicates that nsynjs should stop and wait when calling this function
+```
+
 Example of wrapper to setTimeout, that will be gracefully stopped in case if pseudo-thread is stopped:
  
-    var wait = function (ctx, ms) {
-        var res = {};
-        var timeoutId = setTimeout(function () {
-            console.log('firing timeout');
-            ctx.resume();
-        }, ms);
-        ctx.setDestructor(function () { <<-- this function will be called in case if pseudo-thread is requested to stop
-            console.log('clear timeout');
-            clearTimeout(timeoutId);
-        });
-        return res;
-    };
-    wait.synjsHasCallback = true;
-
+ ```javascript
+var wait = function (ctx, ms) {
+    var res = {};
+    var timeoutId = setTimeout(function () {
+        console.log('firing timeout');
+        ctx.resume();
+    }, ms);
+    ctx.setDestructor(function () { <<-- this function will be called in case if pseudo-thread is requested to stop
+        console.log('clear timeout');
+        clearTimeout(timeoutId);
+    });
+    return res;
+};
+wait.synjsHasCallback = true;
+```
 
 Example of wrapper to jQuery's getJSON, that can return data or throw an exception back to nsynjs-executed code:
 
-    var ajaxGetJson = function (ctx,url) {
-        var res = {}; <<-- results will be posted back to nsynjs via method to this object
-        var ex; <<-- possible exception
-        $.getJSON(url, function (data) {
-            res.data = data; <<-- capture data from callback, or
-        })
-        .fail(function(e) {
-            ex = e; <<-- capture exception
-        })
-        .always(function() {
-            ctx.resume(ex); <<-- resume pseudo-thread
-        });
-        return res;
-    };
-    ajaxGetJson.synjsHasCallback = true; <<-- indicates that nsynjs should stop and wait on evaluating this function
-
+```javascript
+var ajaxGetJson = function (ctx,url) {
+    var res = {}; <<-- results will be posted back to nsynjs via method to this object
+    var ex; <<-- possible exception
+    $.getJSON(url, function (data) {
+        res.data = data; <<-- capture data from callback, or
+    })
+    .fail(function(e) {
+        ex = e; <<-- capture exception
+    })
+    .always(function() {
+        ctx.resume(ex); <<-- resume pseudo-thread
+    });
+    return res;
+};
+ajaxGetJson.synjsHasCallback = true; <<-- indicates that nsynjs should stop and wait on evaluating this function
+```
 
 ### Step 3. Write your synchronous code ###
 
 Put your synchronous code into function:
 
-    function myTestFunction1() {
-        var i=0;
-        
-        while(i<5) {
-            wait(synjsCtx,1000); <<-- reserved variable synjsCtx is a reference to current pseudo-thread
-            console.log(res, new Date());
-            i++;
-        }
-        return "myTestFunction1 finished";
+```javascript
+function myTestFunction1() {
+    var i=0;
+
+    while(i<5) {
+        wait(synjsCtx,1000); <<-- reserved variable synjsCtx is a reference to current pseudo-thread
+        console.log(res, new Date());
+        i++;
     }
+    return "myTestFunction1 finished";
+}
+```
 
 ### Step 4. Execute it ###
 
 Execute your function via nsynjs engine:
 
-    nsynjs.run(myTestFunction1,null, function (ret) {
-        console.log('done all:', ret);
-    });
+```javascript
+nsynjs.run(myTestFunction1,null, function (ret) {
+    console.log('done all:', ret);
+});
+```
 
 The result will look like this:
 
@@ -246,17 +258,22 @@ When nsynjs executes code and encounters some function call, it checks what type
 Nsynjs tries to optimize internal structure by packing as many elements as possible into each internal function.
 For example, consider following code:
 
-    for(i=0; i<arr.length; i++) {
-        res += arr[i];
-    }
-    
+```javascript
+for(i=0; i<arr.length; i++) {
+    res += arr[i];
+}
+```
+
 Since it does not have any function calls in it, it will be packed into one internal function:
 
-    this.execute = function(state) {
-        for(state.localVars.i=0; state.localVars.i<arr.length; state.localVars.i++) {
-            state.localVars.res += state.localVars.arr[state.localVars.i];
-        }
+```javascript
+this.execute = function(state) {
+    for(state.localVars.i=0; state.localVars.i<arr.length; state.localVars.i++) {
+        state.localVars.res += state.localVars.arr[state.localVars.i];
     }
+}
+```
+
 This function will be executed almost as fast as native code.
 
 However, if some function is called inside this code, there is generally no way to find out type of that function
@@ -264,23 +281,27 @@ at compile time, therefore nsynjs will evaluate such expressions one piece at a 
  
 For example, following code will not be optimized:
 
+```javascript
     var n = Math.random()
-    
+```
+
 It will be split into following internal functions:
 
-    this.execute = function(state) {
-        return Math
-    }
-    ..
-    this.execute = function(state,prev) {
-        return prev.random
-    }
-    ..
-    this.execute = function(state,prev) {
-        return prev()
-    }
-    ..
-    this.execute = function(state,prev, v) {
-        return state.localVars.n = v
-    }
+```javascript
+this.execute = function(state) {
+    return Math
+}
+..
+this.execute = function(state,prev) {
+    return prev.random
+}
+..
+this.execute = function(state,prev) {
+    return prev()
+}
+..
+this.execute = function(state,prev, v) {
+    return state.localVars.n = v
+}
+```
     
