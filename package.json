@@ -1,6 +1,6 @@
 {
   "name": "nsynjs",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Synchronous JavaScript execution",
   "main": "nsynjs.js",
   "directories": {

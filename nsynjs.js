@@ -5,7 +5,7 @@
  * @module nsynjs
  * @author Alexei Maximov amaksr
  * @licence AGPLv3
- * @version 0.0.1
+ * @version 0.0.2
  */
 (function(exports){
     if(!exports.console)
@@ -39,10 +39,10 @@
             state.finCb = null;
             delete Syn.states[state.id];
             if(state.exception) {
-                if(!state.parent)
+                if(!state.callerState)
                     throw state.exception;
                 else
-                    state.parent.throwException(state.exception);
+                    state.callerState.throwException(state.exception);
             }
 
             cb.call(state.userThisCtx,state.retVal);
@@ -57,7 +57,7 @@
         return this.exists(state) && !!state.finCb;
     };
 
-    var State = function(id, synjsBin, userThisCtx, finCb, params, parent) {
+    var State = function(id, synjsBin, userThisCtx, finCb, params, parent, callerState) {
         this.id = id;
         this.synjsBin = synjsBin;
         this.userThisCtx = userThisCtx;
@@ -68,6 +68,7 @@
         this.buf = null;
         this.calledStateId = null;
         this.parent = parent;
+        this.callerState = callerState;
         this.destructor = null;
         for(var i=0; i<synjsBin.params.children().length; i++)
             this.localVars[synjsBin.params.children()[i].value] = params[i];
@@ -84,17 +85,11 @@
     State.prototype.resume = function (ex) {
         if(!this.finCb)
             throw new Error("Attempted to call context.resume() on finished context. Is some callback wrapper missing 'synjsHasCallback' property?");
-        this._resume(ex);
-    };
-
-    State.prototype._resume = function (ex) {
         this.destructor = null;
         if(ex)
             this.throwException(ex);
-        var _this=this;
-        setTimeout(function () {
-            Syn.tick(_this);
-        },0);
+        if(!ex || ex && this.exception)
+            Syn.tick(this);
     };
 
     State.prototype.stop = function () {
@@ -117,15 +112,17 @@
         if(se) {
             se.program.catchBlock.execute(this);
             var _this=this;
-            var newState = new State(Syn.stateSeq, this.buf.val().synjsBin, this.userThisCtx, function (res) {
+            var newState;
+            newState= new State(Syn.stateSeq, this.buf.val().synjsBin, this.userThisCtx, function (res) {
                 _this.buf = new ValRef(_this,ValRef.TypeValue,res);
+                _this.calledStateId = null;
                 Syn.tick(_this);
-            }, [e], this);
+            }, [e], this, this);
+            this.calledStateId = newState.id;
             Syn.states[Syn.stateSeq] = newState;
             Syn.stateSeq++;
             se.program.catchBlock.operatorBlock.execute(newState);
             Syn.tick(newState);
-            return false;
         }
         else
             this.exception = e;
@@ -1244,7 +1241,7 @@
         if(this.parseCatch)
             this.qSrc = "catch("+this.params.qSrc+")"+this.operatorBlock.qSrc;
         else
-            this.qSrc = "function "+this.name+this.params.qSrc+this.operatorBlock.qSrc;
+            this.qSrc = "function "+this.name+'('+this.params.qSrc+')'+this.operatorBlock.qSrc;
         if(res && !this.parseCatch)
             eval("this.fn = "+this.qSrc);
         return false;
@@ -1319,11 +1316,16 @@
             return false;
         }
         stackEl.nxt = this.executeStep2;
-        var newState = new State(Syn.stateSeq, f.synjsBin, stackEl.ctx, function (res) {
+        var newState;
+        newState = new State(Syn.stateSeq, f.synjsBin, stackEl.ctx, function (res) {
             state.buf = new ValRef(state,ValRef.TypeValue,res);
             state.calledStateId = null;
-            Syn.tick(state);
-        }, params[1], f.clsr);
+            if(newState.exception)
+                state.throwException(newState.exception);
+
+            if(!newState.exception || newState.exception && state.exception)
+                Syn.tick(state)
+        }, params[1], f.clsr, state);
         state.calledStateId = newState.id;
         Syn.states[Syn.stateSeq] = newState;
         Syn.stateSeq++;
@@ -1453,14 +1455,20 @@
             return false;
         }
         stackEl.nxt = this.executeStep2;
-        var newState; newState = new State(Syn.stateSeq, f.synjsBin, stackEl.ctx, function (res) {
+        var newState;
+        newState = new State(Syn.stateSeq, f.synjsBin, stackEl.ctx, function (res) {
             state.buf = new ValRef(state,ValRef.TypeValue,newState.userThisCtx);
-            state._resume();
-        }, params, state);
+            state.calledStateId = null;
+            if(newState.exception)
+                state.throwException(newState.exception);
+
+            if(!newState.exception || newState.exception && state.exception)
+                Syn.tick(state)
+        }, params, f.clsr, state);
         Syn.states[Syn.stateSeq] = newState;
         Syn.stateSeq++;
         f.synjsBin.operatorBlock.execute(newState);
-        newState._resume();
+        Syn.tick(newState);
         return false;
     };
     OperandNew.prototype.executeStep2 = function(state,stackEl) {
@@ -1632,7 +1640,7 @@
         if(this.parent)
             this.qSrc = "."+this.value;
         else
-            this.qSrc = this.acc;
+            this.qSrc = this.acc || this.value;
         return true;
     };
     OperandLit.prototype.execute = function(state,prev) {
@@ -2419,14 +2427,14 @@
             throw "function pointer expected";
         var userThisCtx = params.shift() || {};
         var callback = params.pop() || function () {};
-        if(!functionPtr._synjsBin) {
-            functionPtr._synjsBin = new OperandFunDef(null);
-            functionPtr._synjsBin.parse(functionPtr.toString(),0);
+        if(!functionPtr.synjsBin) {
+            functionPtr.synjsBin = new OperandFunDef(null);
+            functionPtr.synjsBin.parse(functionPtr.toString(),0);
         }
-        var state = new State(Syn.stateSeq, functionPtr._synjsBin, userThisCtx, callback, params, null);
+        var state = new State(Syn.stateSeq, functionPtr.synjsBin, userThisCtx, callback, params, null,null);
         Syn.states[Syn.stateSeq] = state;
         Syn.stateSeq++;
-        functionPtr._synjsBin.operatorBlock.execute(state);
+        functionPtr.synjsBin.operatorBlock.execute(state);
         Syn.tick(state);
         return state;
     }

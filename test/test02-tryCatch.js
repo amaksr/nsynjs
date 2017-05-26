@@ -6,6 +6,31 @@
     var steps = function () {
         return [
             function (trace) {
+                var myFunc1=function(a,b,c) {
+                    nonExistent();
+                };
+
+                try {
+                    trace.push('step 610');
+                    try {
+                        trace.push('step 620');
+                        myFunc1();
+                        trace.push('step 630');
+                    }
+                    catch (e) {
+                        trace.push('step 640');
+                        trace.push('step 650');
+                        throw "123";
+                        trace.push('step 660');
+                    }
+                }
+                catch (e2) {
+                    trace.push('step 610');
+                    return e2;
+                }
+
+            },
+            function (trace) {
                 var k=0;
                 try {
                     k++;
@@ -46,7 +71,7 @@
             function (trace) {
                 var myFunc1=function(a,b,c) {
                     trace.push(['step 045 myFunc',a,b,c]);
-                    nonExistent();
+                    nonExistent;
                     trace.push(['step 045 myFunc end',a,b,c]);
                 };
 
