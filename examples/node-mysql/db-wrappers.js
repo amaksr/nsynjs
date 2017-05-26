@@ -8,10 +8,9 @@ exports.dbQuery = function (ctx,conn,sql,params) {
     conn.query(sql, params, function (error, data, fields) {
         res.error = error;
         res.data = data;
-        //console.log('affected:',JSON.stringify(data));
         ctx.resume(error);
     });
 
     return res;
 };
-//exports.dbQuery.synjsHasCallback = true;
+exports.dbQuery.synjsHasCallback = true;
