@@ -3,7 +3,16 @@
 # nsynjs #
 
 Nsynjs is JavaScript execution engine + state machine that allows to write javascript code without callbacks,
-and execute it in pseudo-threads in synchronous manner. These pseudo-threads can also be gracefully stopped.
+and execute it in synchronous manner.
+
+Nsynjs has following unique features:
+
+- Psequd-threads that are executed synchronously and that can be gracefully stopped,
+- Asynchronous _new_ operator,
+- No compilation or transpilation required,
+- No need to mark functions with '*', _async_ or _await_ keywords,
+- Not dependant on promises.
+- Compatible with nodejs and all browsers, including Internet Explorer.
 
 Nsynjs is written in ES2015 and does not require any dependencies.
 
