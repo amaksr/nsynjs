@@ -155,6 +155,12 @@
                 };
                 return r;
             },
+            function () {
+                var ret="";
+                for(var i=0; i<arguments.length; i++)
+                    ret+=arguments[i];
+                return ret;
+            },
             function (trace) {
                 var r=100;
                 outer: for(var i=0; i<10; i++) {

@@ -5,7 +5,7 @@
  * @module nsynjs
  * @author Alexei Maximov amaksr
  * @licence AGPLv3
- * @version 0.0.3
+ * @version 0.0.4
  */
 (function(exports){
     if(!exports.console)
@@ -1235,6 +1235,8 @@
             var ref={};
             if(vu.value == 'this')
                 vu.acc = 'state.userThisCtx';
+            else if(vu.value == 'arguments')
+                vu.acc = 'state.localVars.arguments';
             else {
                 var f=false;
                 vu.acc="";
@@ -1386,8 +1388,6 @@
         if(!this.expr.optimize())
             res=false;
         this.qSrc = "["+this.expr.qSrc+"]";
-        if(res)
-            eval("this.execute = function(state) {state.buf = new ValRef(state,ValRef.TypeValue,("+this.qSrc+"))}");
         return res;
     };
     OperandPathAccessIdx.prototype.execute = function(state,prev) {
@@ -1633,7 +1633,9 @@
         this.value = parseVarname(str,idx);
         idx = ss(str, idx + this.value.length);
         if(!this.parent && this.value == 'this')
-            eval("this.ref.get = function(state,prev,idx) { return state.userThisCtx }");
+                eval("this.ref.get = function(state,prev,idx) { return state.userThisCtx }");
+        else if (!this.parent && this.value == 'arguments')
+                eval("this.ref.get = function(state,prev,idx) { return state.localVars.arguments }");
         else {
             eval("this.ref.get = function(state,prev,idx) { return prev."+this.value+" }");
             eval("this.ref.set = function(state,prev,idx,v) { return prev."+this.value+"=v }");
