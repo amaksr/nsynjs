@@ -1,11 +1,11 @@
 var nsynjs = require('../../nsynjs');
 
-var synchronousCode = function (wrappers) {
+var synchronousCode = function (readFile) {
     var config;
 
     // constructor of MyObject
     var MyObject = function(fileName) {
-        this.data = JSON.parse(wrappers.readFile(synjsCtx, fileName).data);
+        this.data = JSON.parse(readFile(synjsCtx, fileName).data);
     };
     MyObject.prototype.getData = function () {
         return this.data;
@@ -13,7 +13,7 @@ var synchronousCode = function (wrappers) {
     return MyObject;
 };
 
-var wrappers = require('./wrappers');
-nsynjs.run(synchronousCode,{},wrappers,function (m) {
+var readFile = require('../../wrappers/nodeFsReadFile').readFile;
+nsynjs.run(synchronousCode,{},readFile,function (m) {
     module.exports = m;
 });

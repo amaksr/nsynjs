@@ -9,7 +9,7 @@
 
 global.nsynjs     = require('../../nsynjs');
 var mysql      = require('mysql');
-var dbWrappers     = require('./db-wrappers');
+var nodeMysqlConn = require('../../wrappers/nodeMysqlConn');
 
 var connection = mysql.createConnection({
     connectionLimit : 1,
@@ -23,7 +23,7 @@ var logic = require('./insert10k-logic');
 
 var env = {
     connection: connection,
-    dbWrappers: dbWrappers
+    query: nodeMysqlConn.query,
 };
 
 nsynjs.run(logic.process,null,env,function () {
