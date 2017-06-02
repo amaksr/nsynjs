@@ -5,7 +5,7 @@
  * @module nsynjs
  * @author Alexei Maximov amaksr
  * @licence AGPLv3
- * @version 0.0.4
+ * @version 0.0.5
  */
 (function(exports){
     if(!exports.console)
@@ -69,8 +69,7 @@
         this.destructor = null;
         if(ex)
             this.throwException(ex);
-        if(!ex || ex && this.exception)
-            this.rootState.tick();
+        this.rootState.tick();
     };
 
     State.prototype.stop = function () {
@@ -78,14 +77,15 @@
     };
 
     State.stop = function () {
-        if(this.calledState) {
-            this.calledState.stop();
-            this.calledState = null;
+        if(this.callerState && this.curCalledState) {
+            this.curCalledState.stop();
+            this.curCalledState = null;
         }
         else if(this.destructor && typeof this.destructor == 'function')
             this.destructor();
         this.stack = [];
         this.finCb = function(){};
+        this.tick();
     };
 
     State.prototype.tick = function () {

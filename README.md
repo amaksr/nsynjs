@@ -7,7 +7,7 @@ and execute it in synchronous manner.
 
 Nsynjs has following unique features:
 
-- Psequd-threads that are executed synchronously and that can be gracefully stopped,
+- Pseudo-threads that are executed synchronously and that can be gracefully stopped,
 - Asynchronous _new_ operator,
 - No compilation or transpilation required,
 - No need to mark functions with '*', _async_ or _await_ keywords,
