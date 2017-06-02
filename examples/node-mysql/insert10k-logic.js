@@ -25,7 +25,7 @@ exports.process = function(env) {
             ')');
 
         console.log('inserting records');
-        for(var i=0; i<10; i++) {
+        for(var i=0; i<10000; i++) {
             dbQuery(synjsCtx, conn, 'insert into syn_users (id,name) values ('+i+','+Math.random()+')');
         }
     }
