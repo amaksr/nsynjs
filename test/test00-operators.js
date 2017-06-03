@@ -6,7 +6,19 @@
     var steps = function () {
         return [
             function (trace, paramA, paramB) {
-                return [typeof zzz];
+                return [typeof zzz,];
+            },
+            function (trace, paramA, paramB) {
+                var a;
+                return typeof(a="string");
+            },
+            function (trace, paramA, paramB) {
+                var a;
+                return typeof(a="string") != "string";
+            },
+            function (trace, paramA, paramB) {
+                var a;
+                return typeof(a="string") == "string";
             },
             function (trace, paramA, paramB) {
                 return [typeof zzz,typeof undefined,typeof false,typeof true,typeof 0,typeof -1,typeof '',typeof Math.sin];

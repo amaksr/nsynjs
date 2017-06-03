@@ -92,6 +92,10 @@ All nsynjs-aware wrapper should generally do following:
 - Return an object, and assign results of the callback to some properties of that object.
 - Call ctx.resume() in th callback of wrapped fucntion, so caller pseudo-thread will continue execution.
 - Set destructor function, that will be called in order to cancel long-running function.
+
+Note: if wrapper may return without calling function with callback, nsynjs needs to be notified about this
+ by calling _ctx.setDoNotWait(true)_ right before _return_ statement.
+
 All nsynjs-aware wrapper should have 'synjsHasCallback' property set to true.
 
 Here is an example of simple wrapper to setTimeout:
@@ -108,7 +112,6 @@ Example of wrapper to setTimeout, that will be gracefully stopped in case if pse
  
 ```javascript
     var wait = function (ctx, ms) {
-        var res = {};
         var timeoutId = setTimeout(function () {
             console.log('firing timeout');
             ctx.resume();
@@ -117,11 +120,32 @@ Example of wrapper to setTimeout, that will be gracefully stopped in case if pse
             console.log('clear timeout');
             clearTimeout(timeoutId);
         });
-        return res;
     };
     wait.synjsHasCallback = true;
 ```
 
+**Note**: if wrapper may return without calling function with callback, nsynjs needs to be notified about this
+ by calling _ctx.setDoNotWait(true)_ right before _return_ statement:
+
+```javascript
+    var wait = function (ctx, ms, condition) {
+        if(condition) {
+            ctx.setDoNotWait(true); // <-- function with callback is not going to be called by wrapper,
+                                    // therefore caller may continue execution
+            return;
+        }
+        var timeoutId = setTimeout(function () {
+            console.log('firing timeout');
+            ctx.resume();
+        }, ms);
+        ctx.setDestructor(function () {
+            console.log('clear timeout');
+            clearTimeout(timeoutId);
+        });
+    };
+    wait.synjsHasCallback = true;
+```
+See wrappers/nodeReadline.js for example of wrapper with conditional callbacks.
 
 Example of wrapper to jQuery's getJSON, that can return data or throw an exception back to nsynjs-executed code:
 ```javascript
@@ -209,6 +233,11 @@ Wrapper function should always call this to indicate that all callbacks are done
 Set destructor function, that will be called if pseudo-therad is terminated.
 
 - _func_: function that will do the cleanup (e.g. abort pending XHR request, or call to cleanTimeout)
+
+**ctx.setDoNotWait(true)**
+
+This notifies nsynjs engine, that wrapper is not going to call slow function with callback, and that
+execution of the caller may be continued.
 
 ## Supported JS features ##
 - var

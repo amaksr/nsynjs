@@ -5,7 +5,7 @@
  * @module nsynjs
  * @author Alexei Maximov amaksr
  * @licence AGPLv3
- * @version 0.0.5
+ * @version 0.0.6
  */
 (function(exports){
     if(!exports.console)
@@ -61,6 +61,10 @@
 
     State.prototype.setDestructor = function (destructor) {
         this.destructor = destructor;
+    };
+
+    State.prototype.setDoNotWait = function (doNotWait) {
+        this.doNotWait = doNotWait;
     };
 
     State.prototype.resume = function (ex) {
@@ -172,7 +176,7 @@
 			throw "expected  '('";
 		idx = ss(str,idx+1);
 
-        this.expr = new Expr(this.clsr,true);
+        this.expr = new Expr(this.clsr);
         idx = this.expr.parse(str,idx);
 		idx = ss(str,idx+1);
 
@@ -244,7 +248,7 @@
             throw "expected  '('";
 
         idx = ss(str,idx+1);
-        this.expr = new Expr(this.clsr,true);
+        this.expr = new Expr(this.clsr);
         idx = this.expr.parse(str,idx);
         idx = ss(str,idx+1);
         this.src = str.substr(start,idx-start);
@@ -301,7 +305,7 @@
             throw "expected  '('";
         idx = ss(str,idx+1);
 
-        this.expr = new Expr(this.clsr,true);
+        this.expr = new Expr(this.clsr);
         idx = this.expr.parse(str,idx);
 
         idx = ss(str,idx+1);
@@ -383,7 +387,7 @@
             throw "Expected 'in'";
         idx = ss(str,idx+2);
 
-        this.inExpr = new Expr(this.clsr,true);
+        this.inExpr = new Expr(this.clsr);
         idx=this.inExpr.parse(str,idx);
         idx = ss(str,idx+1);
         this.body = stmtDetect(this.clsr,str,idx,true);
@@ -458,7 +462,7 @@
 			throw "expected  '('";
 		idx = ss(str,idx+1);
 
-        this.expr1 = new Expr(this.clsr,true);
+        this.expr1 = new Expr(this.clsr);
         if(startingWith(str,idx,'var')){
             idx = ss(str,idx+3);
             this.expr1.inVar = true;
@@ -466,11 +470,11 @@
         idx=this.expr1.parse(str,idx);
 
 		idx = ss(str,idx+1);
-        this.expr2 = new Expr(this.clsr,true);
+        this.expr2 = new Expr(this.clsr);
         idx=this.expr2.parse(str,idx);
 
 		idx = ss(str,idx+1);
-        this.expr3 = new Expr(this.clsr,true);
+        this.expr3 = new Expr(this.clsr);
         idx=this.expr3.parse(str,idx);
         idx = ss(str,idx+1);
 
@@ -604,7 +608,7 @@
         if(ch1(str,idx) !=  '(')
             throw "expected  '('";
         idx = ss(str,idx+1);
-        this.expr = new Expr(this.clsr,true);
+        this.expr = new Expr(this.clsr);
         idx=this.expr.parse(str,idx);
         idx = ss(str,idx+1);
         if(ch1(str,idx) !=  '{')
@@ -616,7 +620,7 @@
 
             if(startingWith(str,idx,'case')) {
                 idx = ss(str,idx+4);
-                var co=new Expr(this.clsr,true);
+                var co=new Expr(this.clsr);
                 idx=co.parse(str,idx);
                 this.cases.push(co);
                 this.idxs.push(this.stmtBlock.ops.length);
@@ -792,7 +796,7 @@
         var start = idx;
         idx = ss(str,idx+3);
         var opStart = idx;
-        this.expr = new Expr(this.clsr,true);
+        this.expr = new Expr(this.clsr);
         this.expr.inVar=true;
         idx = this.expr.parse(str,idx);
         idx = skipOptSemicolon(str,idx);
@@ -820,7 +824,7 @@
 	StmtSingle.prototype.parse = function(str,idx) {
         var start = idx;
 		idx = ss(str,idx);
-        this.expr = new Expr(this.clsr,true);
+        this.expr = new Expr(this.clsr);
         idx = this.expr.parse(str,idx);
         idx = skipOptSemicolon(str,idx);
         this.src = str.substr(start,idx-start);
@@ -856,7 +860,7 @@
         if(ch1(str,idx) != "(")
             throw "expected (";
         idx = ss(str,idx+1);
-        this.expr = new Expr(this.clsr,true);
+        this.expr = new Expr(this.clsr);
         idx=this.expr.parse(str,idx);
         idx = ss(str,idx+1);
         this.src = str.substr(start,idx-start);
@@ -971,7 +975,7 @@
         var start = idx;
         idx = ss(str,idx + 'return'.length);
         var opStart = idx;
-        this.expr = new Expr(this.clsr,true);
+        this.expr = new Expr(this.clsr);
         idx = this.expr.parse(str,idx);
         this.src = str.substr(start,idx-start);
         idx = skipOptSemicolon(str,idx);
@@ -1009,7 +1013,7 @@
         var start = idx;
         idx = ss(str,idx + 'throw'.length);
         var opStart = idx;
-        this.expr = new Expr(this.clsr,true);
+        this.expr = new Expr(this.clsr);
         idx = this.expr.parse(str,idx);
         this.src = str.substr(start,idx-start);
         idx = skipOptSemicolon(str,idx);
@@ -1342,9 +1346,10 @@
 
         if(!f.synjsBin) {
             state.destructor = null;
+            state.doNotWait = false;
             state.buf = new ValRef(state,ValRef.TypeValue,this.ref.get(state,f,params));
             state.stack.pop();
-            if(!f.synjsHasCallback)
+            if(!f.synjsHasCallback || state.doNotWait)
                 return true;
             return false;
         }
@@ -1369,7 +1374,7 @@
         if(!OperandPathAccessIdx.test(str,idx))
             throw "expected '['";
         idx = ss(str,idx+1);
-        this.expr = new Expr(this.clsr,true);
+        this.expr = new Expr(this.clsr);
         idx = this.expr.parse(str,idx);
         idx = ss(str,idx+1);
         this.src = str.substr(start,idx-start);
@@ -1465,9 +1470,11 @@
         var f=stackEl.f;
         if(!f.synjsBin) {
             this.params && params.unshift(this);
+            state.destructor = null;
+            state.doNotWait = false;
             state.buf = new ValRef(state,ValRef.TypeValue,this.ref.get(state,f,params));
             state.stack.pop();
-            if(!f.synjsHasCallback)
+            if(!f.synjsHasCallback || state.doNotWait)
                 return true;
             return false;
         }
@@ -1668,7 +1675,7 @@
                 this.src = str.substr(start,idx-start);
                 return idx;
             }
-            var value = new this.type(this.clsr);
+            var value = new this.type(this.clsr,1);
             idx = value.parse(str,idx);
             //value=Expr.simplify(value);
             this.elements.push(value);
@@ -1794,7 +1801,7 @@
             if(ch1(str,idx)!=':')
                 throw "expected :";
             idx = ss(str,idx+1);
-            var value = new Expr(this.clsr,false);
+            var value = new Expr(this.clsr,1);
             idx = value.parse(str,idx);
             this.props.push(new OperandObjKVPair(keyStr, value));
             idx = ss(str,idx);
@@ -1941,7 +1948,7 @@
             throw "expected 'typeof'";
         idx = ss(str,idx+6);
 
-        this.expr = new Expr(this.clsr);
+        this.expr = new Expr(this.clsr,16);
         idx = this.expr.parse(str,idx);
         idx=ss(str,idx);
         this.src = str.substr(start,idx-start);
@@ -1954,7 +1961,7 @@
     Typeof.prototype.optimize = function() {
         var res = true;
         if(!this.expr.optimize()) res = false;
-        this.qSrc = "typeof "+this.expr.qSrc;
+        this.qSrc = "typeof ("+this.expr.qSrc+")";
         if(res)
             eval("this.execute = function(state) {state.buf = new ValRef(state,ValRef.TypeValue,("+this.qSrc+"))}");
         return res;
@@ -1973,10 +1980,10 @@
         return true;
     };
 
-    var Expr = function (clsr,allowList) {
+    var Expr = function (clsr,minPrio) {
         this.t = 'Expr';
         this.clsr = clsr;
-        this.allowList=allowList;
+        this.minPrio=minPrio||0;
         this.childs=[];
         this.inVar=false;
     };
@@ -1989,11 +1996,11 @@
             var c=ch1(str,idx);
             if(c=='}' || c==')' || c==']' || c==';' || c==':' || startingWith(str,idx,'in') || startingWith(str,idx,'of'))
                 break;
-            if(!this.allowList && c==',')
-                break;
+            // if(this.minPrio && c==',')
+            //     break;
             if(c == '(') {
                 idx=ss(str,idx+1);
-                var e = new Expr(this.clsr,true);
+                var e = new Expr(this.clsr);
                 idx = e.parse(str,idx);
                 idx = ss(str,idx+1);
                 this.childs.push(e);
@@ -2002,6 +2009,8 @@
             var op = new ExprTokenOp(this.clsr);
             var nxtIdx = op.parse(str,idx,this.childs.last());
             if(nxtIdx != idx) {
+                if(op.prio < this.minPrio)
+                    break;
                 idx = nxtIdx;
                 this.childs.push(op);
                 continue;
@@ -2023,6 +2032,9 @@
             this.childs.push(op);
             idx = ss(str,idx);
         }
+        var lst = this.childs.last();
+        if(lst && lst.src==',')
+            this.childs.pop();
         this.src = str.substr(start,idx-start);
 
         return idx;

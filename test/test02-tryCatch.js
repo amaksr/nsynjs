@@ -72,7 +72,7 @@
                 var myFunc1=function(a,b,c) {
                     trace.push(['step 045 myFunc',a,b,c]);
                     nonExistent;
-                    trace.push(['step 045 myFunc end',a,b,c]);
+                    trace.push(['step 0451 myFunc end',a,b,c]);
                 };
 
                 try {
@@ -88,7 +88,7 @@
                 var myFunc2=function(a,b,c) {
                     trace.push(['step 045 myFunc',a,b,c]);
                     var res = Math.sin(a);
-                    trace.push(['step 045 myFunc end',a,b,c,]);
+                    trace.push(['step 0452 myFunc end',a,b,c]);
                     return res;
                 };
 

@@ -5,7 +5,7 @@
 /**
  * Cancellable wrapper for mysql#connection#query (node)
  * Returns object with following properties
- * - 'data' set to content of the file in case of success
+ * - 'data' set to content result set in case of success
  * - 'error' set to error in case of failure
  * - 'fields' set to list of fileds from the query
  *
@@ -15,7 +15,7 @@
  * @param {Object} connection Object, created by mysql.createConnection
  * @param {String} sql SQL query to execute
  * @param {Array} params Parameters of SQL query
- * @param {Boolean} allowDestroy Whether to use connection.destroy() stop is requested
+ * @param {Boolean} allowDestroy Whether to use connection.destroy() when stop is requested
  * @returns {Object} query results
  * @throws {Exception}
  */
