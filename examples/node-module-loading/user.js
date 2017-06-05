@@ -5,7 +5,7 @@ var synchronousCode = function (readFile) {
 
     var getConfig = function() {
         if( !config )
-            config = JSON.parse(readFile(synjsCtx, 'config.json').data);
+            config = JSON.parse(readFile(synjsCtx, 'config.json', "utf8").data);
 
         return config;
     };
@@ -16,7 +16,7 @@ var synchronousCode = function (readFile) {
     };
 };
 
-var readFile = require('../../wrappers/nodeFsReadFile').readFile;
+var readFile = require('../../wrappers/nodeFs').readFile;
 nsynjs.run(synchronousCode,{},readFile,function (m) {
     module.exports = m;
 });

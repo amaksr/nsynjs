@@ -5,7 +5,7 @@ var synchronousCode = function (readFile) {
 
     // constructor of MyObject
     var MyObject = function(fileName) {
-        this.data = JSON.parse(readFile(synjsCtx, fileName).data);
+        this.data = JSON.parse(readFile(synjsCtx, fileName, "utf8").data);
     };
     MyObject.prototype.getData = function () {
         return this.data;
@@ -13,7 +13,7 @@ var synchronousCode = function (readFile) {
     return MyObject;
 };
 
-var readFile = require('../../wrappers/nodeFsReadFile').readFile;
+var readFile = require('../../wrappers/nodeFs').readFile;
 nsynjs.run(synchronousCode,{},readFile,function (m) {
     module.exports = m;
 });
