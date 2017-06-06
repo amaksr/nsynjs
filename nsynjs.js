@@ -5,7 +5,7 @@
  * @module nsynjs
  * @author Alexei Maximov amaksr
  * @licence AGPLv3
- * @version 0.0.6
+ * @version 0.0.7
  */
 (function(exports){
     if(!exports.console)
@@ -114,9 +114,42 @@
                 }
             }
             catch (e) {
-                state.throwException(e);
+                state.throwException("\n"+state.formatStackTrace(e));
             }
         }
+    };
+
+    State.prototype.formatStackTrace = function (e) {
+        var res = [];
+        var state = this;
+        do {
+            var src = state.getRootClosure().synjsBin.src;
+            var name = state.synjsBin.name || '<anonymous>';
+            var msg = findLine(src,state.stack.last().program.start);
+            if(msg) {
+                res.push("nsynjs error at "+name);
+                if(state===this) {
+                    if(msg.prevLine) res.push('>'+msg.prevLine);
+                    res.push('>'+msg.currLine);
+                    res.push('>'+msg.carrot+" <<< "+e);
+                    if(msg.nextLine) res.push('>'+msg.nextLine);
+                }
+                else {
+                    res.push('>'+msg.currLine);
+                    res.push('>'+msg.carrot);
+                }
+            }
+            else
+                res.push('Source not available');
+        } while (state = state.callerState);
+        return res.join("\n");
+    };
+
+    State.prototype.getRootClosure = function () {
+        var s=this;
+        while(s.parent)
+            s=s.parent;
+        return s;
     };
 
     State.prototype.funcStart = function (funcPtr, ctx, params, isConstructor) {
@@ -170,7 +203,7 @@
 		this.opBodyFalseBin = null;
 	};
 	StmtIf.prototype.parse = function (str,idx) {
-	    var start = idx;
+	    this.start = idx;
 		idx = ss(str,idx+2);
 		if(ch1(str,idx) !=  '(')
 			throw "expected  '('";
@@ -193,7 +226,7 @@
             if(this.opBodyFalseBin.labelSkip) idx = this.opBodyFalseBin.labelSkip;
             idx = this.opBodyFalseBin.parse(str,idx);
 		}
-        this.src = str.substr(start,idx-start);
+        this.src = str.substr(this.start,idx-this.start);
         idx = skipOptSemicolon(str,idx);
         return idx;
     };
@@ -231,7 +264,7 @@
         this.src = null;
     };
     StmtDoWhile.prototype.parse = function (str,idx) {
-        var start = idx;
+        this.start = idx;
         idx = ss(str,idx+2);
         this.opBodyBin = stmtDetect(this.clsr,str,idx,true);
         if(this.opBodyBin.labelSkip) idx = this.opBodyBin.labelSkip;
@@ -251,7 +284,7 @@
         this.expr = new Expr(this.clsr);
         idx = this.expr.parse(str,idx);
         idx = ss(str,idx+1);
-        this.src = str.substr(start,idx-start);
+        this.src = str.substr(this.start,idx-this.start);
         idx = skipOptSemicolon(str,idx);
         return idx;
     };
@@ -299,7 +332,7 @@
         this.src = null;
     };
     StmtWhile.prototype.parse = function (str,idx) {
-        var start = idx;
+        this.start = idx;
         idx = ss(str,idx+5);
         if(ch1(str,idx) !=  '(')
             throw "expected  '('";
@@ -314,7 +347,7 @@
         if(this.opBodyBin.labelSkip) idx = this.opBodyBin.labelSkip;
         idx = this.opBodyBin.parse(str,idx);
 
-        this.src = str.substr(start,idx-start);
+        this.src = str.substr(this.start,idx-this.start);
         idx = skipOptSemicolon(str,idx);
         return idx;
     };
@@ -363,7 +396,7 @@
         this.body = null;
     };
     StmtForIn.prototype.parse = function (str,idx) {
-        var start = idx;
+        this.start = idx;
         idx = ss(str,idx+3);
         if(ch1(str,idx) !=  '(')
             throw "expected  '('";
@@ -393,7 +426,7 @@
         this.body = stmtDetect(this.clsr,str,idx,true);
         if(this.body.labelSkip) idx = this.body.labelSkip;
         idx = this.body.parse(str,idx);
-        this.src = str.substr(start,idx-start);
+        this.src = str.substr(this.start,idx-this.start);
         idx = skipOptSemicolon(str,idx);
         return idx;
     };
@@ -456,7 +489,7 @@
         this.body = null;
 	};
 	StmtFor.prototype.parse = function (str,idx) {
-        var start = idx;
+        this.start = idx;
 		idx = ss(str,idx+3);
 		if(ch1(str,idx) !=  '(')
 			throw "expected  '('";
@@ -482,7 +515,7 @@
         if(this.body.labelSkip) idx = this.body.labelSkip;
         idx = this.body.parse(str,idx);
 
-        this.src = str.substr(start,idx-start);
+        this.src = str.substr(this.start,idx-this.start);
         idx = skipOptSemicolon(str,idx);
         return idx;
     };
@@ -603,7 +636,7 @@
         this.expr=null;
     };
     StmtSwitch.prototype.parse = function(str,idx) {
-        var start = idx;
+        this.start = idx;
         idx = ss(str, idx+6);
         if(ch1(str,idx) !=  '(')
             throw "expected  '('";
@@ -646,7 +679,7 @@
         if(idx >= str.length)
             throw "unexpected end of statement";
         idx++;
-        this.src = str.substr(start,idx-start);
+        this.src = str.substr(this.start,idx-this.start);
         return idx;
     };
     StmtSwitch.prototype.optimize = function() {
@@ -732,7 +765,7 @@
         this.labels = {};
     };
 	StmtBlock.prototype.parse = function(str,idx) {
-        var start = idx;
+        this.start = idx;
         idx = ss(str, idx+1);
 		while(ch1(str,idx) != '}' && idx < str.length) {
 			idx = ss(str, idx);
@@ -747,7 +780,7 @@
         if(idx >= str.length)
             throw "unexpected end of statement";
         idx++;
-        this.src = str.substr(start,idx-start);
+        this.src = str.substr(this.start,idx-this.start);
 		return idx;
     };
     StmtBlock.prototype.optimize = function () {
@@ -793,14 +826,13 @@
         this.src = null;
 	};
     StmtVar.prototype.parse = function(str,idx) {
-        var start = idx;
+        this.start = idx;
         idx = ss(str,idx+3);
-        var opStart = idx;
         this.expr = new Expr(this.clsr);
         this.expr.inVar=true;
         idx = this.expr.parse(str,idx);
         idx = skipOptSemicolon(str,idx);
-        this.src = str.substr(start,idx-start);
+        this.src = str.substr(this.start,idx-this.start);
         return idx;
     };
     StmtVar.prototype.optimize = function() {
@@ -822,12 +854,12 @@
         this.src = null;
 	};
 	StmtSingle.prototype.parse = function(str,idx) {
-        var start = idx;
+        this.start = idx;
 		idx = ss(str,idx);
         this.expr = new Expr(this.clsr);
         idx = this.expr.parse(str,idx);
         idx = skipOptSemicolon(str,idx);
-        this.src = str.substr(start,idx-start);
+        this.src = str.substr(this.start,idx-this.start);
         var e = this.expr.children();
         if( e.length == 1 && e[0].t == 'Path'
             && e[0].children().length == 1
@@ -855,7 +887,7 @@
         this.expr = "";
     };
     StmtGoto.prototype.parse = function(str,idx) {
-        var start = idx;
+        this.start = idx;
         idx = ss(str,idx+"nsynjs.goto".length);
         if(ch1(str,idx) != "(")
             throw "expected (";
@@ -863,7 +895,7 @@
         this.expr = new Expr(this.clsr);
         idx=this.expr.parse(str,idx);
         idx = ss(str,idx+1);
-        this.src = str.substr(start,idx-start);
+        this.src = str.substr(this.start,idx-this.start);
         idx = skipOptSemicolon(str,idx);
         return idx;
     };
@@ -899,14 +931,14 @@
         this.targetLabel = "";
 	};
 	StmtBreak.prototype.parse = function(str,idx) {
-        var start = idx;
+        this.start = idx;
         idx = ss(str,idx+5);
         var lbl = parseVarname(str,idx);
         if( lbl.length ) {
             this.targetLabel = lbl;
             idx = ss(str,idx+lbl.length);
         }
-        this.src = str.substr(start,idx-start);
+        this.src = str.substr(this.start,idx-this.start);
         idx = skipOptSemicolon(str,idx);
         return idx;
     };
@@ -936,14 +968,14 @@
         this.tgtLabel = "";
     };
     StmtContinue.prototype.parse = function(str,idx) {
-        var start = idx;
+        this.start = idx;
         idx = ss(str,idx+8);
         var lbl = parseVarname(str,idx);
         if( lbl.length ) {
             this.tgtLabel = lbl;
             idx = ss(str,idx+lbl.length);
         }
-        this.src = str.substr(start,idx-start);
+        this.src = str.substr(this.start,idx-this.start);
         idx = skipOptSemicolon(str,idx);
         return idx;
     };
@@ -972,12 +1004,11 @@
         this.src = null;
     };
     StmtReturn.prototype.parse  = function (str,idx) {
-        var start = idx;
+        this.start = idx;
         idx = ss(str,idx + 'return'.length);
-        var opStart = idx;
         this.expr = new Expr(this.clsr);
         idx = this.expr.parse(str,idx);
-        this.src = str.substr(start,idx-start);
+        this.src = str.substr(this.start,idx-this.start);
         idx = skipOptSemicolon(str,idx);
         return idx;
     };
@@ -1010,12 +1041,12 @@
         this.src = null;
     };
     StmtThrow.prototype.parse  = function (str,idx) {
-        var start = idx;
+        this.start = idx;
         idx = ss(str,idx + 'throw'.length);
         var opStart = idx;
         this.expr = new Expr(this.clsr);
         idx = this.expr.parse(str,idx);
-        this.src = str.substr(start,idx-start);
+        this.src = str.substr(this.start,idx-this.start);
         idx = skipOptSemicolon(str,idx);
         return idx;
     };
@@ -1041,7 +1072,7 @@
         this.src = null;
     };
     StmtTry.prototype.parse = function (str,idx) {
-        var start = idx;
+        this.start = idx;
         idx = ss(str,idx+3);
         this.tryBlock = new StmtBlock(this.clsr);
         idx = this.tryBlock.parse(str,idx);
@@ -1052,7 +1083,7 @@
         idx = this.catchBlock.parse(str,idx);
         idx = ss(str,idx);
 
-        this.src = str.substr(start,idx-start);
+        this.src = str.substr(this.start,idx-this.start);
         idx = skipOptSemicolon(str,idx);
         return idx;
     };
@@ -1088,7 +1119,7 @@
         return c=="'" || c=='"';
     };
     OperandString.prototype.parse = function(str,idx) {
-        var start = idx;
+        this.start = idx;
         var q = ch1(str,idx);
         if(!OperandString.test(str,idx))
             throw "expected quote character";
@@ -1100,7 +1131,7 @@
             }
             if(c==q) {
                 idx++;
-                this.src = str.substr(start,idx-start);
+                this.src = str.substr(this.start,idx-this.start);
                 eval("this.value = "+this.src+";");
                 return ss(str,idx);
             }
@@ -1128,7 +1159,7 @@
     OperandConst.prototype.parse = function(str,idx) {
         if(!OperandConst.test(str,idx))
             throw "expected constant";
-        var start = idx;
+        this.start = idx;
         this.src = parseVarname(str,idx);
         eval("this.value = "+this.src+";");
         return ss(str,idx+this.src.length);
@@ -1157,7 +1188,8 @@
     OperandNumber.prototype.parse = function(str,idx) {
         if(!OperandNumber.test(str,idx))
             throw "expected digit";
-        var start = idx, dec = false, e = false;
+        this.start = idx;
+        var dec = false, e = false;
 
         for(; idx < str.length; idx++) {
             var c = ch1(str,idx);
@@ -1166,7 +1198,7 @@
             if((c=='e' || c=='E') && !e) { e = true; continue; }
             break;
         }
-        this.src = str.substr(start, idx - start);
+        this.src = str.substr(this.start, idx - this.start);
         eval("this.value = "+this.src+";");
         return ss(str,idx);
     };
@@ -1196,7 +1228,7 @@
         return startingWith(str,idx,'function');
     };
     OperandFunDef.prototype.parse = function(str,idx) {
-        var start = idx;
+        this.start = idx;
         if(this.parseCatch) {
             if(!startingWith(str,idx,'catch'))
                 throw "expected 'catch'";
@@ -1223,7 +1255,7 @@
         idx = ss(str,idx+1);
         this.operatorBlock = new StmtBlock(this);
         idx = this.operatorBlock.parse(str,idx);
-        this.src = str.substr(start,idx-start);
+        this.src = str.substr(this.start,idx-this.start);
         this.fn = function(){ throw 'This function is intended to be called via nsynjs'};
         this.fn.synjsBin = this;
         idx = ss(str,idx);
@@ -1296,14 +1328,14 @@
         return ch1(str,idx) == '('
     };
     OperandPathAccessFun.prototype.parse = function(str,idx) {
-        var start=idx;
+        this.start=idx;
         if(!OperandPathAccessFun.test(str,idx))
             throw "expected '('";
         idx = ss(str,idx+1);
         this.params = new OperandList(this.clsr);
         idx = this.params.parse(str,idx);
         idx = ss(str,idx+1);
-        this.src = str.substr(start,idx-start);
+        this.src = str.substr(this.start,idx-this.start);
         return idx;
     };
     OperandPathAccessFun.prototype.ref = {
@@ -1339,10 +1371,8 @@
         params.push(state.buf.val());
         var f=stackEl.prev.val();
 
-        if(typeof f !== 'function') {
-            state.throwException(new TypeError('Not a function: ' + f));
-            return true;
-        }
+        if(typeof f !== 'function')
+            throw 'Not a function: ' + f;
 
         if(!f.synjsBin) {
             state.destructor = null;
@@ -1370,14 +1400,14 @@
         return ch1(str,idx) == '['
     };
     OperandPathAccessIdx.prototype.parse = function(str,idx) {
-        var start=idx;
+        this.start=idx;
         if(!OperandPathAccessIdx.test(str,idx))
             throw "expected '['";
         idx = ss(str,idx+1);
         this.expr = new Expr(this.clsr);
         idx = this.expr.parse(str,idx);
         idx = ss(str,idx+1);
-        this.src = str.substr(start,idx-start);
+        this.src = str.substr(this.start,idx-this.start);
         return idx;
     };
     OperandPathAccessIdx.prototype.ref = {
@@ -1418,7 +1448,7 @@
         return startingWith(str,idx,'new');
     };
     OperandNew.prototype.parse = function(str,idx) {
-        var start=idx;
+        this.start=idx;
         if(!OperandNew.test(str,idx))
             throw "expected 'new'";
         idx = ss(str,idx+3);
@@ -1433,7 +1463,7 @@
             idx = this.params.parse(str,idx);
             idx=ss(str,idx+1);
         }
-        this.src = str.substr(start,idx-start);
+        this.src = str.substr(this.start,idx-this.start);
         return idx;
     };
     OperandNew.prototype.ref = {
@@ -1526,7 +1556,7 @@
         }
     };
     OperandPath.prototype.parse = function(str,idx) {
-        var start = idx;
+        this.start = idx;
         var prev = OperandPath.test(str,idx, this.clsr);
         if(!prev)
             throw "expected value";
@@ -1560,9 +1590,7 @@
             this.path.push(nxt);
             idx = ss(str, idx);
         }
-        // if(this.path.last().t=='Lit')
-        //     this.path.last().assigns();
-        this.src = str.substr(start,idx-start);
+        this.src = str.substr(this.start,idx-this.start);
         return ss(str,idx);
     };
     OperandPath.prototype.children = function() {
@@ -1667,12 +1695,12 @@
         this.type = type || Expr;
     };
     OperandList.prototype.parse = function(str,idx) {
-        var start = idx;
+        this.start = idx;
         while(idx < str.length) {
             idx = ss(str,idx);
             var c = ch1(str,idx);
             if(c == ']' || c == ')') {
-                this.src = str.substr(start,idx-start);
+                this.src = str.substr(this.start,idx-this.start);
                 return idx;
             }
             var value = new this.type(this.clsr,1);
@@ -1739,7 +1767,7 @@
     OperandArr.prototype.parse = function(str,idx) {
         if(!OperandArr.test(str,idx))
             throw "expected [";
-        var start = idx;
+        this.start = idx;
         idx++;
         this.arr = new OperandList(this.clsr);
         idx = this.arr.parse(str,idx);
@@ -1776,14 +1804,14 @@
     OperandObj.prototype.parse = function(str,idx) {
         if(!OperandObj.test(str,idx))
             throw "expected {";
-        var start = idx;
+        this.start = idx;
         idx++;
         while(idx < str.length) {
             idx = ss(str,idx);
             var c = ch1(str,idx);
             if(c == '}') {
                 idx++;
-                this.src = str.substr(start, idx - start);
+                this.src = str.substr(this.start, idx - this.start);
                 return ss(str,idx);
             }
             var key,keyStr;
@@ -1894,7 +1922,7 @@
     };
 
     Delete.prototype.parse = function(str,idx) {
-        var start=idx;
+        this.start=idx;
         if(!Delete.test(str,idx))
             throw "expected 'delete'";
         idx = ss(str,idx+6);
@@ -1902,7 +1930,7 @@
         this.expr = new OperandPath(this.clsr);
         idx = this.expr.parse(str,idx);
         idx=ss(str,idx);
-        this.src = str.substr(start,idx-start);
+        this.src = str.substr(this.start,idx-this.start);
         this.expr = Expr.simplify(this.expr);
         return idx;
     };
@@ -1943,7 +1971,7 @@
         return startingWith(str,idx,'typeof');
     };
     Typeof.prototype.parse = function(str,idx) {
-        var start=idx;
+        this.start=idx;
         if(!Typeof.test(str,idx))
             throw "expected 'typeof'";
         idx = ss(str,idx+6);
@@ -1951,7 +1979,7 @@
         this.expr = new Expr(this.clsr,16);
         idx = this.expr.parse(str,idx);
         idx=ss(str,idx);
-        this.src = str.substr(start,idx-start);
+        this.src = str.substr(this.start,idx-this.start);
         this.expr = Expr.simplify(this.expr);
         return idx;
     };
@@ -1991,7 +2019,7 @@
         return ch1(str,idx)=='(';
     };
     Expr.prototype.parse = function (str,idx) {
-        var start = idx;
+        this.start = idx;
         while( idx < str.length) {
             var c=ch1(str,idx);
             if(c=='}' || c==')' || c==']' || c==';' || c==':' || startingWith(str,idx,'in') || startingWith(str,idx,'of'))
@@ -2035,7 +2063,7 @@
         var lst = this.childs.last();
         if(lst && lst.src==',')
             this.childs.pop();
-        this.src = str.substr(start,idx-start);
+        this.src = str.substr(this.start,idx-this.start);
 
         return idx;
     };
@@ -2354,7 +2382,7 @@
         ]
     ];
     ExprTokenOp.prototype.parse = function (str,idx, prev) {
-        var start = idx;
+        this.start = idx;
         for(var i = 0; i<ExprTokenOp.OpTable.length; i++) {
             var op = ExprTokenOp.OpTable[i];
             if(op[0](str,idx,prev)) {
@@ -2363,7 +2391,7 @@
                 idx+=op[3];
                 this.checkSkipEval2 = op[4];
                 this.assign = op[5];
-                this.src = str.substr(start,idx-start);
+                this.src = str.substr(this.start,idx-this.start);
                 break;
             }
         }
@@ -2448,6 +2476,7 @@
         if(!functionPtr.synjsBin) {
             functionPtr.synjsBin = new OperandFunDef(null);
             functionPtr.synjsBin.parse(functionPtr.toString(),0);
+            functionPtr.synjsBin.name = functionPtr.name;
         }
         var state = new State(Syn.stateSeq, functionPtr.synjsBin, userThisCtx, callback, params, null,null);
         Syn.states[Syn.stateSeq] = state;
@@ -2455,6 +2484,23 @@
         functionPtr.synjsBin.operatorBlock.execute(state);
         state.tick();
         return state;
+    }
+
+    function findLine(str,idx) {
+        var lines = str.split("\n");
+        var prev=cur=0;
+        for(var i=0; i<lines.length; i++) {
+            prev = cur;
+            cur += lines[i].length+1;
+            if(cur>=idx) {
+                return {
+                    prevLine: lines[i-1].replace(/[\n\r]/g, ''),
+                    currLine: lines[i].replace(/[\n\r]/g, ''),
+                    nextLine: lines[i+1].replace(/[\n\r]/g, ''),
+                    carrot: (new Array(idx-prev+1).join(' '))+'^',
+                }
+            }
+        }
     }
 
     function parseVarname(str,idx) {

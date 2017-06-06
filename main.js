@@ -8,14 +8,26 @@ var wait = function (ctx, ms) {
 };
 wait.synjsHasCallback = true;
 
-var myFunc = function() {
-    document.getElementById('my').innerHTML+="<p>date at start:"+new Date()+"</p>";
-    document.getElementById('my').innerHTML+="<p>waiting 5 sec...</p>";
-    wait(synjsCtx,5000);
-    document.getElementById('my').innerHTML+="<p>5 sec later  :"+new Date()+"</p>";
+var myFunc = function (trace) {
+    var myObj = function (id,name) {
+        this.id = id;
+        this.name = name;
+        this.getId = function () {
+            return this.id;
+        }
+    };
+    myObj.prototype.toString = function () {
+        return "myObj:"+this.name+","+this.id;
+    };
+
+    var o1 = new myObj;
+    var o2 = new myObj();
+    var o3 = new myObj(3,'John');
+
+    console.log(['step 230',o1.toString(),o2.toString(),o3.toString(),o3.getId()]);
 };
 
 nsynjs.run(myFunc,{},11,22,33,function (r) {
-    console.log('Done');
+    console.log('Done',r);
 });
 
