@@ -75,7 +75,10 @@ In Node.JS:
 
     npm install nsynjs
 
-    global.nsynjs = global.nsynjs || require('nsynjs');
+    var nsynjs = require('nsynjs');
+    
+_Note: latest version of examples or documantation files are available on this GitHub repository.
+ NPM package is updated only when changes are made to core library files._ 
     
 In browser:
     
