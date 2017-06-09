@@ -169,6 +169,8 @@ Example of wrapper to jQuery's getJSON, that can return data or throw an excepti
     ajaxGetJson.nsynjsHasCallback = true; // <<-- indicates that nsynjs should stop and wait on evaluating this function
 ```
 
+Wrappers for some common functions could be found in /wrappers folder. See [JSDOCs](http://htmlpreview.github.io/?https://github.com/amaksr/nsynjs/blob/master/docs/index.html).
+
 ### Step 3. Write your synchronous code ###
 
 Put your synchronous code into function:
