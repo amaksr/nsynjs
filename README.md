@@ -149,6 +149,20 @@ Put your synchronous code into function:
 
 ```
 
+If you use functions that return promises, you can just use them like this:
+```javascript
+    var req = window.fetch(url).data;
+```
+In this example _window.fetch()_ will return pending promise. Nsynjs will check if returned object is a promise,
+and if yes, it will wait until promise is resolved or rejected. Once promise resolves, it's value is assigned to
+'data' propery of an object, that is returned to the caller. If promise rejects, it will trigger exception in the
+caller.
+
+Promises can also be chained:
+```javascript
+    var text = window.fetch(url).data.text().data;
+```
+
 ### Step 4. Execute it ###
 
 Execute your function via nsynjs engine:
