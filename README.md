@@ -86,22 +86,7 @@ In browser:
 
 ### Step 2. Wrap all functions with callbacks into nsynjs-aware wrappers ###
 
-There are many functions out there that return results via callbacks. In order to use them in your nsynjs-executed code you just need to wrap them,
-so they would be able to post results of callback back to nsynjs, and resume execution of nsynjs engine.
-
-All nsynjs-aware wrapper should generally do following:
-- Accept reference to a current pseudo-thread as a parameter (e.g. *ctx*).
-- Call wrapped function
-- Return an object, and assign results of the callback to some properties of that object.
-- Call ctx.resume() in th callback of wrapped fucntion, so caller pseudo-thread will continue execution.
-- Set destructor function, that will be called in order to cancel long-running function.
-
-Note: if wrapper may return without calling function with callback, nsynjs needs to be notified about this
- by calling _ctx.setDoNotWait(true)_ right before _return_ statement.
-
-All nsynjs-aware wrapper should have 'nsynjsHasCallback' property set to true.
-
-Here is an example of simple wrapper to setTimeout:
+Here is an example of wrapper to setTimeout function:
 ```javascript
     var wait = function (ctx, ms) {
         setTimeout(function () {
@@ -110,47 +95,8 @@ Here is an example of simple wrapper to setTimeout:
     };
     wait.nsynjsHasCallback = true; // <<-- indicates that nsynjs should stop and wait when calling this function
 ```
-    
-Example of wrapper to setTimeout, that will be gracefully stopped in case if pseudo-thread is stopped:
- 
-```javascript
-    var wait = function (ctx, ms) {
-        var timeoutId = setTimeout(function () {
-            console.log('firing timeout');
-            ctx.resume();
-        }, ms);
-        ctx.setDestructor(function () { // <<-- this function will be called in case if pseudo-thread is requested to stop
-            console.log('clear timeout');
-            clearTimeout(timeoutId);
-        });
-    };
-    wait.nsynjsHasCallback = true;
-```
 
-**Note**: if wrapper may return without calling function with callback, nsynjs needs to be notified about this
- by calling _ctx.setDoNotWait(true)_ right before _return_ statement:
-
-```javascript
-    var wait = function (ctx, ms, condition) {
-        if(condition) {
-            ctx.setDoNotWait(true); // <-- function with callback is not going to be called by wrapper,
-                                    // therefore caller may continue execution
-            return;
-        }
-        var timeoutId = setTimeout(function () {
-            console.log('firing timeout');
-            ctx.resume();
-        }, ms);
-        ctx.setDestructor(function () {
-            console.log('clear timeout');
-            clearTimeout(timeoutId);
-        });
-    };
-    wait.nsynjsHasCallback = true;
-```
-See wrappers/nodeReadline.js for example of wrapper with conditional callbacks.
-
-Example of wrapper to jQuery's getJSON, that can return data or throw an exception back to nsynjs-executed code:
+Another example - wrapper to jQuery's getJSON(), that can return data or throw an exception back to nsynjs-executed code:
 ```javascript
     var ajaxGetJson = function (ctx,url) {
         var res = {}; // <<-- results will be posted back to nsynjs via method to this object
@@ -169,7 +115,9 @@ Example of wrapper to jQuery's getJSON, that can return data or throw an excepti
     ajaxGetJson.nsynjsHasCallback = true; // <<-- indicates that nsynjs should stop and wait on evaluating this function
 ```
 
-Wrappers for some common functions could be found in /wrappers folder. See [JSDOCs](http://htmlpreview.github.io/?https://github.com/amaksr/nsynjs/blob/master/docs/index.html).
+[More on wrappers](https://github.com/amaksr/nsynjs/wiki/Wrappers)
+
+[Wrapper included with nsynjs](http://htmlpreview.github.io/?https://github.com/amaksr/nsynjs/blob/master/docs/index.html)
 
 ### Step 3. Write your synchronous code ###
 
@@ -273,7 +221,7 @@ execution of the caller may be continued.
 
 1. Operators that are executed via nsynjs should all be separated with semicolon.
 
-2. Nsynjs is not able to execute native functions with callbacks, such as Array.map. But in many cases
+2. Nsynjs is not able to execute native functions with callbacks, such as Array.map, or Array.forEach(). But in many cases
  this can be done by running polyfills via nsynjs. Please see 'browser-array-map-polyfill.html' for an example.
 
 ## Under the hood ##
