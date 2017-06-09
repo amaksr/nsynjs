@@ -5,7 +5,7 @@ var synchronousCode = function (readFile) {
 
     var getConfig = function() {
         if( !config )
-            config = JSON.parse(readFile(synjsCtx, 'config.json', "utf8").data);
+            config = JSON.parse(readFile(nsynjsCtx, 'config.json', "utf8").data);
 
         return config;
     };

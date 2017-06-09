@@ -5,7 +5,7 @@ var synchronousCode = function (readFile) {
 
     // constructor of MyObject
     var MyObject = function(fileName) {
-        this.data = JSON.parse(readFile(synjsCtx, fileName, "utf8").data);
+        this.data = JSON.parse(readFile(nsynjsCtx, fileName, "utf8").data);
     };
     MyObject.prototype.getData = function () {
         return this.data;

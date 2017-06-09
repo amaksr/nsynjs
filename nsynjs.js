@@ -5,7 +5,7 @@
  * @module nsynjs
  * @author Alexei Maximov amaksr
  * @licence AGPLv3
- * @version 0.0.7
+ * @version 0.0.8
  */
 (function(exports){
     if(!exports.console)
@@ -29,10 +29,10 @@
         return this.exists(state) && !!state.finCb;
     };
 
-    var State = function(id, synjsBin, userThisCtx, finCb, params, parent, callerState) {
+    var State = function(id, nsynjsBin, userThisCtx, finCb, params, parent, callerState) {
         this.id = id;
         this.t = 'State';
-        this.synjsBin = synjsBin;
+        this.nsynjsBin = nsynjsBin;
         this.userThisCtx = userThisCtx;
         this.finCb = finCb || function () {};
         this.params = params;
@@ -44,18 +44,17 @@
         this.callerState = callerState;
         if(!callerState) {
             this.tick = State.tick;
-            this.stop = State.stop;
             this.rootState = this;
         }
         else {
             this.rootState = callerState.rootState;
         }
         this.destructor = null;
-        for(var i=0; i<synjsBin.params.children().length; i++)
-            this.localVars[synjsBin.params.children()[i].value] = params[i];
-        for(i in synjsBin.funDecls)
-            this.localVars[i] = synjsBin.funDecls[i];
-        this.localVars['synjsCtx'] = this;
+        for(var i=0; i<nsynjsBin.params.children().length; i++)
+            this.localVars[nsynjsBin.params.children()[i].value] = params[i];
+        for(i in nsynjsBin.funDecls)
+            this.localVars[i] = nsynjsBin.funDecls[i];
+        this.localVars['nsynjsCtx'] = this;
         this.localVars['arguments'] = params;
     };
 
@@ -69,7 +68,7 @@
 
     State.prototype.resume = function (ex) {
         if(!this.finCb)
-            throw new Error("Attempted to call context.resume() on finished context. Is some callback wrapper missing 'synjsHasCallback' property?");
+            throw new Error("Attempted to call context.resume() on finished context. Is some callback wrapper missing 'nsynjsHasCallback' property?");
         this.destructor = null;
         if(ex)
             this.throwException(ex);
@@ -80,16 +79,22 @@
         throw "Not a root state";
     };
 
-    State.stop = function () {
-        if(this.callerState && this.curCalledState) {
-            this.curCalledState.stop();
-            this.curCalledState = null;
+    State.prototype.stop = function () {
+        if(this.callerState)
+            throw "Not a root state";
+        this._stop();
+        this.rootState.tick();
+    };
+
+    State.prototype._stop = function () {
+        if(this.calledState) {
+            this.calledState._stop();
+            this.calledState = null;
         }
         else if(this.destructor && typeof this.destructor == 'function')
             this.destructor();
         this.stack = [];
         this.finCb = function(){};
-        this.tick();
     };
 
     State.prototype.tick = function () {
@@ -123,8 +128,8 @@
         var res = [];
         var state = this;
         do {
-            var src = state.getRootClosure().synjsBin.src;
-            var name = state.synjsBin.name || '<anonymous>';
+            var src = state.getRootClosure().nsynjsBin.src;
+            var name = state.nsynjsBin.name || '<anonymous>';
             var msg = findLine(src,state.stack.last().program.start);
             if(msg) {
                 res.push("nsynjs error at "+name);
@@ -153,12 +158,12 @@
     };
 
     State.prototype.funcStart = function (funcPtr, ctx, params, isConstructor) {
-        var newState = new State(Syn.stateSeq, funcPtr.synjsBin, ctx, null, params, funcPtr.clsr, this);
+        var newState = new State(Syn.stateSeq, funcPtr.nsynjsBin, ctx, null, params, funcPtr.clsr, this);
         newState.isConstructor = isConstructor;
         this.calledState = newState;
         this.rootState.curCalledState = newState;
         Syn.states[Syn.stateSeq++] = newState;
-        funcPtr.synjsBin.operatorBlock.execute(newState);
+        funcPtr.nsynjsBin.operatorBlock.execute(newState);
     };
 
     State.prototype.funcFinish = function () {
@@ -1251,13 +1256,13 @@
         idx = this.params.parse(str,idx);
         for(var i=0; i<this.params.children().length; i++)
             this.varDefs[this.params.children()[i].value]=this.params.children()[i];
-        this.varDefs['synjsCtx'] = true;
+        this.varDefs['nsynjsCtx'] = true;
         idx = ss(str,idx+1);
         this.operatorBlock = new StmtBlock(this);
         idx = this.operatorBlock.parse(str,idx);
         this.src = str.substr(this.start,idx-this.start);
         this.fn = function(){ throw 'This function is intended to be called via nsynjs'};
-        this.fn.synjsBin = this;
+        this.fn.nsynjsBin = this;
         idx = ss(str,idx);
 
         this.resolve();
@@ -1374,12 +1379,12 @@
         if(typeof f !== 'function')
             throw 'Not a function: ' + f;
 
-        if(!f.synjsBin) {
+        if(!f.nsynjsBin) {
             state.destructor = null;
             state.doNotWait = false;
             state.buf = new ValRef(state,ValRef.TypeValue,this.ref.get(state,f,params));
             state.stack.pop();
-            if(!f.synjsHasCallback || state.doNotWait)
+            if(!f.nsynjsHasCallback || state.doNotWait)
                 return true;
             return false;
         }
@@ -1498,13 +1503,13 @@
     OperandNew.prototype.executeStep1 = function(state,stackEl) {
         var params = state.buf.val();
         var f=stackEl.f;
-        if(!f.synjsBin) {
+        if(!f.nsynjsBin) {
             this.params && params.unshift(this);
             state.destructor = null;
             state.doNotWait = false;
             state.buf = new ValRef(state,ValRef.TypeValue,this.ref.get(state,f,params));
             state.stack.pop();
-            if(!f.synjsHasCallback || state.doNotWait)
+            if(!f.nsynjsHasCallback || state.doNotWait)
                 return true;
             return false;
         }
@@ -2008,6 +2013,73 @@
         return true;
     };
 
+    var CondExpr = function (clsr, type) {
+        this.t = 'CondExpr';
+        this.clsr = clsr;
+        this.type = type;
+        switch(this.type) {
+            case CondExpr.TypeAnd:
+                this.prio = 7;
+                this.execute = this.executeAnd;
+                break;
+            case CondExpr.TypeOr:
+                this.prio = 6;
+                this.execute = this.executeOr;
+                break;
+            case CondExpr.TypeYesNo:
+                this.prio = 5;
+                this.execute = this.executeYesNo;
+                break;
+            default:
+                throw "Incorrect condition type: "+this.type;
+        }
+    };
+    CondExpr.TypeAnd = 1;
+    CondExpr.TypeOr = 2;
+    CondExpr.TypeYesNo = 3;
+    CondExpr.prototype.parse = function (str,idx) {
+        this.start = idx;
+        this.expr = new Expr(this.clsr, this.prio);
+        idx = this.expr.parse(str,idx);
+        idx = ss(str,idx);
+        if(this.type === CondExpr.TypeYesNo) {
+            if(ch1(str,idx) === ':') {
+                idx = ss(str,idx+1);
+                this.expr2 = new Expr(this.clsr, this.prio);
+                idx = this.expr2.parse(str,idx);
+                idx = ss(str,idx);
+            }
+            else
+                throw "expected ':'";
+        }
+        this.src = str.substr(this.start,idx-this.start);
+        return idx;
+    };
+    CondExpr.prototype.children = function () {
+        return this.expr2?[this.expr,this.expr2]:[this.expr];
+    };
+    CondExpr.prototype.optimize=function() {
+        var res=true;
+        if(!this.expr.optimize())
+            res = false;
+        if(this.expr2 && !this.expr2.optimize())
+            res = false;
+        this.qSrc = this.expr.qSrc;
+        if(this.type === CondExpr.TypeYesNo)
+            this.qSrc += ":"+this.expr2.qSrc;
+        return res;
+    };
+    CondExpr.prototype.executeAnd = function(state) {
+        state.buf.val() && this.expr.execute(state);
+    };
+    CondExpr.prototype.executeOr = function(state) {
+        state.buf.val() || this.expr.execute(state);
+    };
+    CondExpr.prototype.executeYesNo = function(state) {
+        state.buf.val()?this.expr.execute(state):this.expr2.execute(state);
+    };
+
+
     var Expr = function (clsr,minPrio) {
         this.t = 'Expr';
         this.clsr = clsr;
@@ -2016,17 +2088,16 @@
         this.inVar=false;
     };
     Expr.test = function (str,idx) {
-        return ch1(str,idx)=='(';
+        return ch1(str,idx)==='(';
     };
     Expr.prototype.parse = function (str,idx) {
         this.start = idx;
         while( idx < str.length) {
             var c=ch1(str,idx);
-            if(c=='}' || c==')' || c==']' || c==';' || c==':' || startingWith(str,idx,'in') || startingWith(str,idx,'of'))
+            if(c==='}' || c===')' || c===']' || c===';' || c===':'
+                || startingWith(str,idx,'in') || startingWith(str,idx,'of'))
                 break;
-            // if(this.minPrio && c==',')
-            //     break;
-            if(c == '(') {
+            if(c === '(') {
                 idx=ss(str,idx+1);
                 var e = new Expr(this.clsr);
                 idx = e.parse(str,idx);
@@ -2041,6 +2112,20 @@
                     break;
                 idx = nxtIdx;
                 this.childs.push(op);
+
+                var e=null;
+                if(op.src === '?')
+                    e = new CondExpr(this.clsr, CondExpr.TypeYesNo);
+                else if(op.src === '&&')
+                    e = new CondExpr(this.clsr, CondExpr.TypeAnd);
+                else if(op.src === '||')
+                    e = new CondExpr(this.clsr, CondExpr.TypeOr);
+                if(e) {
+                    idx = e.parse(str,idx);
+                    idx = ss(str,idx);
+                    this.childs.push(e);
+                }
+
                 continue;
             }
             if(!OperandPath.test(str,idx)) {
@@ -2075,7 +2160,6 @@
             program: this,
             ops: [],
             vals: [],
-            skipEval: 0,
             childIdx: 0,
             nxt: this.executeStepEvalToken
         };
@@ -2101,12 +2185,8 @@
         }
         stackEl.token = this.childs[stackEl.childIdx++];
         if(stackEl.token.t!='Op') {
-            if(stackEl.skipEval)
-                stackEl.vals.push(new ValRef(state,ValRef.TypeValue,null));
-            else {
-                stackEl.nxt = this.executeStepAfterEval;
-                stackEl.token.execute(state);
-            }
+            stackEl.nxt = this.executeStepAfterEval;
+            stackEl.token.execute(state);
         }
         else {
             if(stackEl.ops.length && !(stackEl.ops.last().assign && stackEl.token.assign)) {
@@ -2122,10 +2202,6 @@
     Expr.prototype.executeStepEvalToken2 = function(state,stackEl) {
         var t = stackEl.token;
         stackEl.ops.push(t);
-        if(!stackEl.skipEval && t.checkSkipEval2 && t.checkSkipEval2(stackEl.vals.last().val()))
-            stackEl.skipEval=t.prio;
-        if(stackEl.skipEval && t.prio<stackEl.skipEval)
-            stackEl.skipEval=0;
         stackEl.nxt = this.executeStepEvalToken;
         return true;
     };
@@ -2194,7 +2270,7 @@
                 var to=vals.pop();
                 return to.set(to.val()+v.val());
             },
-            3, 2, null, true
+            3, 2, true
         ],
         [   function (str,idx,prev) {return prev && ch2(str,idx) == '-='},
             function (state,vals) {
@@ -2202,7 +2278,7 @@
                 var to=vals.pop();
                 return to.set(to.val()-v.val());
             },
-            3, 2, null, true
+            3, 2, true
         ],
         [   function (str,idx,prev) {return prev && ch2(str,idx) == '*='},
             function (state,vals) {
@@ -2210,7 +2286,7 @@
                 var to=vals.pop();
                 return to.set(to.val()*v.val());
             },
-            3, 2, null, true
+            3, 2, true
         ],
         [   function (str,idx,prev) {return prev && ch2(str,idx) == '/='},
             function (state,vals) {
@@ -2218,7 +2294,7 @@
                 var to=vals.pop();
                 return to.set(to.val()/v.val());
             },
-            3, 2, null, true
+            3, 2, true
         ],
         [   function (str,idx,prev) {return prev && ch2(str,idx) == '%='},
             function (state,vals) {
@@ -2226,7 +2302,7 @@
                 var to=vals.pop();
                 return to.set(to.val()%v.val());
             },
-            3, 2, null, true
+            3, 2, true
         ],
         [   function (str,idx,prev) {return prev && ch2(str,idx) == '<<'},
             function (state,vals) {
@@ -2234,7 +2310,7 @@
                 var to=vals.pop();
                 return to.val()<<v.val();
             },
-            12, 2, null, true
+            12, 2, true
         ],
         [   function (str,idx,prev) {return prev && ch2(str,idx) == '>>'},
             function (state,vals) {
@@ -2242,7 +2318,7 @@
                 var to=vals.pop();
                 return to.val()>>v.val();
             },
-            12, 2, null, true
+            12, 2, true
         ],
         [   function (str,idx,prev) {return prev && ch2(str,idx) == '&='},
             function (state,vals) {
@@ -2250,7 +2326,7 @@
                 var to=vals.pop();
                 return to.set(to.val()&v.val());
             },
-            3, 2, null, true
+            3, 2, true
         ],
         [   function (str,idx,prev) {return prev && ch2(str,idx) == '|='},
             function (state,vals) {
@@ -2258,7 +2334,7 @@
                 var to=vals.pop();
                 return to.set(to.val()|v.val());
             },
-            3, 2, null, true
+            3, 2, true
         ],
         [   function (str,idx,prev) {return prev && ch2(str,idx) == '^='},
             function (state,vals) {
@@ -2266,7 +2342,7 @@
                 var to=vals.pop();
                 return to.set(to.val()^v.val());
             },
-            3, 2, null, true
+            3, 2, true
         ],
         [   function (str,idx,prev) {return (!prev || prev.t=='Op') && ch2(str,idx) == '++'},
             function (state,vals) {
@@ -2310,11 +2386,11 @@
         ],
         [   function (str,idx,prev) {return prev && ch2(str,idx) == '&&'},
             function (state,vals) { var p=vals.pop().val(); return vals.pop().val()&&p },
-            6, 2, function (c) { return !c }
+            6, 2
         ],
         [   function (str,idx,prev) {return prev && ch2(str,idx) == '||'},
             function (state,vals) { var p=vals.pop().val(); return vals.pop().val()||p },
-            5, 2, function (c) { return c }
+            5, 2
         ],
         [   function (str,idx,prev) {return prev && ch2(str,idx) == '<='},
             function (state,vals) {  return vals.pop().val() >= vals.pop().val()  },
@@ -2374,11 +2450,15 @@
                 var to=vals.pop();
                 return to.set(v.val());
             },
-            3, 1, null, true
+            3, 1, true
         ],
         [   function (str,idx,prev) {return prev && ch1(str,idx) == ','},
             function (state,vals) {  var p=vals.pop().val(); vals.pop(); return p },
             0, 1
+        ],
+        [   function (str,idx,prev) {return prev && ch1(str,idx) == '?'},
+            function (state,vals) {  var p=vals.pop().val(); vals.pop(); return p },
+            4, 1
         ]
     ];
     ExprTokenOp.prototype.parse = function (str,idx, prev) {
@@ -2389,8 +2469,7 @@
                 this.evalFunc = op[1];
                 this.prio = op[2];
                 idx+=op[3];
-                this.checkSkipEval2 = op[4];
-                this.assign = op[5];
+                this.assign = op[4];
                 this.src = str.substr(this.start,idx-this.start);
                 break;
             }
@@ -2473,15 +2552,15 @@
             throw "function pointer expected";
         var userThisCtx = params.shift() || {};
         var callback = params.pop() || function () {};
-        if(!functionPtr.synjsBin) {
-            functionPtr.synjsBin = new OperandFunDef(null);
-            functionPtr.synjsBin.parse(functionPtr.toString(),0);
-            functionPtr.synjsBin.name = functionPtr.name;
+        if(!functionPtr.nsynjsBin) {
+            functionPtr.nsynjsBin = new OperandFunDef(null);
+            functionPtr.nsynjsBin.parse(functionPtr.toString(),0);
+            functionPtr.nsynjsBin.name = functionPtr.name;
         }
-        var state = new State(Syn.stateSeq, functionPtr.synjsBin, userThisCtx, callback, params, null,null);
+        var state = new State(Syn.stateSeq, functionPtr.nsynjsBin, userThisCtx, callback, params, null,null);
         Syn.states[Syn.stateSeq] = state;
         Syn.stateSeq++;
-        functionPtr.synjsBin.operatorBlock.execute(state);
+        functionPtr.nsynjsBin.operatorBlock.execute(state);
         state.tick();
         return state;
     }

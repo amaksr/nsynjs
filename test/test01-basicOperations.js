@@ -24,10 +24,66 @@
 
                 return [
                     fun1(false,"FALSE") && fun1("Test false && ..."),
+                    fun1(false,"FALSE") && fun1("Test false && ..."),
                     fun1(true,"TRUE") && fun1("Test true && ..."),
                     fun1(false,"FALSE") || fun1("Test false || ..."),
                     fun1(true,"TRUE") || fun1("Test true || ..."),
+                    fun1(true,"TRUE CONDITION") ? fun1("Resulted true"):fun1("Resulted false"),
+                    fun1(true,"FALSE CONDITION") ? fun1("Resulted true"):fun1("Resulted false"),
                 ];
+            },
+            function () {
+                return {
+                    res: false && 123
+                };
+            },
+            function () {
+                return {
+                    res: true && 123
+                };
+            },
+            function () {
+                return {
+                    res: false || 123,
+                };
+            },
+            function () {
+                return {
+                    res: true || 123
+                };
+            },
+            function () {
+                return {
+                    res: true ? 123:456,
+                };
+            },
+            function () {
+                return {
+                    res: false ? 123:456,
+                };
+            },
+            function () {
+                return {
+                    res: 4!=6 ? new String:new String(343),
+                };
+            },
+            function () {
+                return {
+                    res: -4==4*-1 ? new String:new String(343),
+                };
+            },
+            function () {
+                return {
+                    res: 4!=6 ? 'yes':'no',
+                };
+            },
+            function () {
+                return [ -4==4*-1 ? 'false'+'it is':'true'+'!',];
+            },
+            function () {
+                return {
+                    res: !-4==4*-1 ? 'false'+'it is':'true'+'!'
+                };
             },
             function (trace, paramA, paramB) {
                 trace.push(['step 010',paramA, paramB]);

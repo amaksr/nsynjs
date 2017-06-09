@@ -31,6 +31,6 @@ function jQueryGetJSON(ctx,url) {
     });
     return res;
 };
-jQueryGetJSON.synjsHasCallback = true; // let nsynjs know that this function
+jQueryGetJSON.nsynjsHasCallback = true; // let nsynjs know that this function
                 // is slow, and that caller needs to wait for callback to finish
 

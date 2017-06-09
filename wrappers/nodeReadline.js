@@ -71,7 +71,7 @@ textFile.prototype.readLine = function (ctx) {
     this.iFace.resume();
     return this.res;
 };
-textFile.prototype.readLine.synjsHasCallback = true;
+textFile.prototype.readLine.nsynjsHasCallback = true;
 
 /**
  * close text file

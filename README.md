@@ -99,7 +99,7 @@ All nsynjs-aware wrapper should generally do following:
 Note: if wrapper may return without calling function with callback, nsynjs needs to be notified about this
  by calling _ctx.setDoNotWait(true)_ right before _return_ statement.
 
-All nsynjs-aware wrapper should have 'synjsHasCallback' property set to true.
+All nsynjs-aware wrapper should have 'nsynjsHasCallback' property set to true.
 
 Here is an example of simple wrapper to setTimeout:
 ```javascript
@@ -108,7 +108,7 @@ Here is an example of simple wrapper to setTimeout:
             ctx.resume(); // <<-- resume execution of nsynjs pseudo-thread, referred by ctx
         }, ms);
     };
-    wait.synjsHasCallback = true; // <<-- indicates that nsynjs should stop and wait when calling this function
+    wait.nsynjsHasCallback = true; // <<-- indicates that nsynjs should stop and wait when calling this function
 ```
     
 Example of wrapper to setTimeout, that will be gracefully stopped in case if pseudo-thread is stopped:
@@ -124,7 +124,7 @@ Example of wrapper to setTimeout, that will be gracefully stopped in case if pse
             clearTimeout(timeoutId);
         });
     };
-    wait.synjsHasCallback = true;
+    wait.nsynjsHasCallback = true;
 ```
 
 **Note**: if wrapper may return without calling function with callback, nsynjs needs to be notified about this
@@ -146,7 +146,7 @@ Example of wrapper to setTimeout, that will be gracefully stopped in case if pse
             clearTimeout(timeoutId);
         });
     };
-    wait.synjsHasCallback = true;
+    wait.nsynjsHasCallback = true;
 ```
 See wrappers/nodeReadline.js for example of wrapper with conditional callbacks.
 
@@ -166,7 +166,7 @@ Example of wrapper to jQuery's getJSON, that can return data or throw an excepti
         });
         return res;
     };
-    ajaxGetJson.synjsHasCallback = true; // <<-- indicates that nsynjs should stop and wait on evaluating this function
+    ajaxGetJson.nsynjsHasCallback = true; // <<-- indicates that nsynjs should stop and wait on evaluating this function
 ```
 
 ### Step 3. Write your synchronous code ###
@@ -178,7 +178,7 @@ Put your synchronous code into function:
         var i=0;
         
         while(i<5) {
-            wait(synjsCtx,1000); // <<-- reserved variable synjsCtx is a reference to current pseudo-thread
+            wait(nsynjsCtx,1000); // <<-- reserved variable nsynjsCtx is a reference to current pseudo-thread
             console.log(res, new Date());
             i++;
         }
@@ -221,7 +221,7 @@ Returns:
 
 ### Pseudo-thread execution context reference ###
 
-Pseudo-thread execution context is available inside nsynjs-executed code via predefined variable **synjsCtx**.
+Pseudo-thread execution context is available inside nsynjs-executed code via predefined variable **nsynjsCtx**.
 
 #### For use inside nsynjs-aware wrapper functions ####
 
@@ -255,6 +255,7 @@ execution of the caller may be continued.
 - break [label]
 - continue [label]
 - return
+- expr1 ? expr2 : expr3
 - try ... catch
 - throw
 - typeof
@@ -264,7 +265,6 @@ execution of the caller may be continued.
 - const
 - let
 - for ... of
-- expr1 ? expr2 : expr3
 - arrow functions
 
 ## Other limitations ##
@@ -288,9 +288,9 @@ When nsynjs executes code and encounters some function call, it checks what type
 
 - function with **_someOtherFunc.synjsBin_** property defined: these functions executed in synchronous manner by nsynjs.
 - function without **_someOtherFunc.synjsBin_** property defined
-    - With  **_someOtherFunc.synjsHasCallback_** property defined: this means that someOtherFunc is nsynjs-aware wrapper,
+    - With  **_someOtherFunc.nsynjsHasCallback_** property defined: this means that someOtherFunc is nsynjs-aware wrapper,
     so nsynjs should stop and wait untill ctx.resume() is called by wrapper.
-    - Without  **_someOtherFunc.synjsHasCallback_** property defined: these functions are executed immediately.
+    - Without  **_someOtherFunc.nsynjsHasCallback_** property defined: these functions are executed immediately.
 
 ## Performance considerations ##
 

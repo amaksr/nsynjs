@@ -18,7 +18,7 @@ exports.appendFile = function (ctx, path, data, options) {
         ctx.resume(error);
     } );
 };
-exports.appendFile.synjsHasCallback = true;
+exports.appendFile.nsynjsHasCallback = true;
 
 
 /**
@@ -34,7 +34,7 @@ exports.chmod = function (ctx,path,mode) {
         ctx.resume(error);
     } );
 };
-exports.chmod.synjsHasCallback = true;
+exports.chmod.nsynjsHasCallback = true;
 
 /**
  * Wrapper for fs.chown (node)
@@ -50,7 +50,7 @@ exports.chown = function (ctx,path,uid, gid) {
         ctx.resume(error);
     } );
 };
-exports.chown.synjsHasCallback = true;
+exports.chown.nsynjsHasCallback = true;
 
 /**
  * Wrapper for fs.fchmod (node)
@@ -65,7 +65,7 @@ exports.fchmod = function (ctx,path,mode) {
         ctx.resume(error);
     } );
 };
-exports.fchmod.synjsHasCallback = true;
+exports.fchmod.nsynjsHasCallback = true;
 
 
 
@@ -83,7 +83,7 @@ exports.fchown = function (ctx,path,uid, gid) {
         ctx.resume(error);
     } );
 };
-exports.fchown.synjsHasCallback = true;
+exports.fchown.nsynjsHasCallback = true;
 
 
 /**
@@ -99,7 +99,7 @@ exports.lchmod = function (ctx,path,mode) {
         ctx.resume(error);
     } );
 };
-exports.lchmod.synjsHasCallback = true;
+exports.lchmod.nsynjsHasCallback = true;
 
 
 /**
@@ -116,7 +116,7 @@ exports.lchown = function (ctx,path,uid, gid) {
         ctx.resume(error);
     } );
 };
-exports.lchown.synjsHasCallback = true;
+exports.lchown.nsynjsHasCallback = true;
 
 
 /**
@@ -132,7 +132,7 @@ exports.link = function (ctx,existingPath, newPath) {
         ctx.resume(error);
     } );
 };
-exports.link.synjsHasCallback = true;
+exports.link.nsynjsHasCallback = true;
 
 /**
  * Wrapper for fs.lstat (node)
@@ -153,7 +153,7 @@ exports.lstat = function (ctx,path) {
     } );
     return res;
 };
-exports.lstat.synjsHasCallback = true;
+exports.lstat.nsynjsHasCallback = true;
 
 /**
  * Wrapper for fs.mkdir (node)
@@ -168,7 +168,7 @@ exports.mkdir = function (ctx,path,mode) {
         ctx.resume(error);
     } );
 };
-exports.mkdir.synjsHasCallback = true;
+exports.mkdir.nsynjsHasCallback = true;
 
 
 /**
@@ -187,7 +187,7 @@ exports.mkdtemp = function (ctx, prefix, options) {
     } );
     return res;
 };
-exports.mkdtemp.synjsHasCallback = true;
+exports.mkdtemp.nsynjsHasCallback = true;
 
 
 /**
@@ -211,7 +211,7 @@ exports.readdir = function (ctx,path,options) {
     } );
     return res;
 };
-exports.readdir.synjsHasCallback = true;
+exports.readdir.nsynjsHasCallback = true;
 
 /**
  * Wrapper for fs.readFile (node)
@@ -234,7 +234,7 @@ exports.readFile = function (ctx,path,options) {
     } );
     return res;
 };
-exports.readFile.synjsHasCallback = true;
+exports.readFile.nsynjsHasCallback = true;
 
 
 /**
@@ -258,7 +258,7 @@ exports.readlink = function (ctx,path,options) {
     } );
     return res;
 };
-exports.readlink.synjsHasCallback = true;
+exports.readlink.nsynjsHasCallback = true;
 
 
 /**
@@ -282,7 +282,7 @@ exports.realpath = function (ctx,path,options) {
     } );
     return res;
 };
-exports.realpath.synjsHasCallback = true;
+exports.realpath.nsynjsHasCallback = true;
 
 
 /**
@@ -298,7 +298,7 @@ exports.rename = function (ctx,oldPath, newPath) {
         ctx.resume(error);
     } );
 };
-exports.rename.synjsHasCallback = true;
+exports.rename.nsynjsHasCallback = true;
 
 
 /**
@@ -313,7 +313,7 @@ exports.rmdir = function (ctx,path) {
         ctx.resume(error);
     } );
 };
-exports.rmdir.synjsHasCallback = true;
+exports.rmdir.nsynjsHasCallback = true;
 
 
 /**
@@ -335,7 +335,7 @@ exports.stat = function (ctx,path) {
     } );
     return res;
 };
-exports.stat.synjsHasCallback = true;
+exports.stat.nsynjsHasCallback = true;
 
 
 /**
@@ -352,7 +352,7 @@ exports.symlink = function (ctx,target,path,type) {
         ctx.resume(error);
     } );
 };
-exports.symlink.synjsHasCallback = true;
+exports.symlink.nsynjsHasCallback = true;
 
 
 /**
@@ -368,7 +368,7 @@ exports.truncate = function (ctx,path,len) {
         ctx.resume(error);
     } );
 };
-exports.truncate.synjsHasCallback = true;
+exports.truncate.nsynjsHasCallback = true;
 
 
 /**
@@ -383,7 +383,7 @@ exports.unlink = function (ctx,path) {
         ctx.resume(error);
     } );
 };
-exports.unlink.synjsHasCallback = true;
+exports.unlink.nsynjsHasCallback = true;
 
 
 /**
@@ -400,7 +400,7 @@ exports.utimes = function (ctx, path, atime, mtime) {
         ctx.resume(error);
     } );
 };
-exports.utimes.synjsHasCallback = true;
+exports.utimes.nsynjsHasCallback = true;
 
 /**
  * Wrapper for fs.open (node)
@@ -421,7 +421,7 @@ exports.open = function (ctx, path, flags, mode) {
     });
     return res;
 };
-exports.open.synjsHasCallback = true;
+exports.open.nsynjsHasCallback = true;
 
 /**
  * Wrapper for fs.read (node)
@@ -446,7 +446,7 @@ exports.read = function (ctx, fd, buffer, offset, length, position) {
     });
     return res;
 };
-exports.read.synjsHasCallback = true;
+exports.read.nsynjsHasCallback = true;
 
 
 /**
@@ -472,7 +472,7 @@ exports.write = function (ctx, fd, buffer, offset, length, position) {
     });
     return res;
 };
-exports.write.synjsHasCallback = true;
+exports.write.nsynjsHasCallback = true;
 
 
 /**
@@ -487,5 +487,5 @@ exports.close = function (ctx,fd) {
         ctx.resume(error);
     } );
 };
-exports.close.synjsHasCallback = true;
+exports.close.nsynjsHasCallback = true;
 

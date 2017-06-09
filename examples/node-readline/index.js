@@ -10,13 +10,13 @@ function process(textFile,wait) {
     var fh = new textFile();
     fh.open('../data/lorem.txt');
     var s, i = 0;
-    while (typeof(s = fh.readLine(synjsCtx).data) != 'undefined')
+    while (typeof(s = fh.readLine(nsynjsCtx).data) != 'undefined')
     {
         if(s)
             console.log(s);
         else
             console.log("<empty line>");
-        wait(synjsCtx,1000);
+        wait(nsynjsCtx,1000);
     }
     fh.close();
 }

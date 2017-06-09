@@ -10,9 +10,9 @@ function process() {
         if(!cache[url]) {
             try {
                 log.append("<div>Cache MISS for "+url+", calling ajax...</div>");
-                var el = jQueryGetJSON(synjsCtx, url);
+                var el = jQueryGetJSON(nsynjsCtx, url);
                 cache[url] = el;
-                nsynWait(synjsCtx,500);
+                nsynWait(nsynjsCtx,500);
             }
             catch (ex) {
                 log.append("<div>Error: "+ex.statusText+"</div>");
@@ -25,7 +25,7 @@ function process() {
 
 
     log.append("<div>Started...</div>");
-    var data = jQueryGetJSON(synjsCtx, "data/index.json").data;
+    var data = jQueryGetJSON(nsynjsCtx, "data/index.json").data;
     log.append("<div>Length: "+data.length+"</div>");
     for(var i=0; i<10; i++) {
         log.append("<div>Step:"+i+"</div>");

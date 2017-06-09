@@ -10,7 +10,7 @@ exports.process = function(env) {
     // drop table, it may not exist
     console.log('dropping table');
     try {
-        query(synjsCtx, conn, 'drop table syn_users');
+        query(nsynjsCtx, conn, 'drop table syn_users');
     }
     catch (e) {
         console.log('cannot drop table: ',e);
@@ -18,7 +18,7 @@ exports.process = function(env) {
 
     try {
         console.log('creating table');
-        query(synjsCtx, conn, 'create table syn_users (' +
+        query(nsynjsCtx, conn, 'create table syn_users (' +
             'id int,' +
             'name varchar(255),' +
             'primary key(id)' +
@@ -26,7 +26,7 @@ exports.process = function(env) {
 
         console.log('inserting records');
         for(var i=0; i<10000; i++) {
-            query(synjsCtx, conn, 'insert into syn_users (id,name) values (?,?)',[i,Math.random()]);
+            query(nsynjsCtx, conn, 'insert into syn_users (id,name) values (?,?)',[i,Math.random()]);
         }
     }
     catch (e) {

@@ -6,7 +6,7 @@ var wait = function (ctx, ms) {
     }, ms);
     return res;
 };
-wait.synjsHasCallback = true;
+wait.nsynjsHasCallback = true;
 
 var myFunc = function (trace) {
     var myObj = function (id,name) {
@@ -24,7 +24,7 @@ var myFunc = function (trace) {
     var o2 = new myObj();
     var o3 = new myObj(3,'John');
 
-    console.log(['step 230',o1.toString(),o2.toString(),o3.toString(),o3.getId()]);
+    console.log('step 230',o1.toString(),o2.toString(),o3.toString(),o3.getId());
 };
 
 nsynjs.run(myFunc,{},11,22,33,function (r) {

@@ -1,7 +1,7 @@
 {
   "name": "nsynjs",
-  "version": "0.0.7",
-  "description": "Synchronous JavaScript execution",
+  "version": "0.0.8",
+  "description": "Synchronous JavaScript executor",
   "main": "nsynjs.js",
   "directories": {
     "test": "test"

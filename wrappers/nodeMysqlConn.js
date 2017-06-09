@@ -43,4 +43,4 @@ exports.query = function (ctx, connection, sql, params, allowDestroy) {
 
     return res;
 };
-exports.query.synjsHasCallback = true;
+exports.query.nsynjsHasCallback = true;

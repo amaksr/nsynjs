@@ -5,20 +5,20 @@
 function process() {
     var log = $('#log');
     log.append("<div>Started...</div>");
-    var data = jQueryGetJSON(synjsCtx, "data/index.json").data;
+    var data = jQueryGetJSON(nsynjsCtx, "data/index.json").data;
     log.append("<div>Length: "+data.length+"</div>");
     for(k=0; k<200; k++)
         for(var i in data) {
             log.append("<div>"+i+", "+data[i]+"</div>");
             try {
-                var el = jQueryGetJSON(synjsCtx, "data/"+data[i]);
+                var el = jQueryGetJSON(nsynjsCtx, "data/"+data[i]);
                 log.append("<div>"+el.data.descr+","+"</div>");
             }
             catch (ex) {
                 log.append("<div>Error: "+ex.statusText+"</div>");
             }
             console.log('i=',i);
-            nsynWait(synjsCtx,1);
+            nsynWait(nsynjsCtx,1);
         }
         log.append('Done');
 }

@@ -18,7 +18,7 @@ function nsynWait(ctx, milliseconds) {
         clearTimeout(timeoutId);
     });
 };
-nsynWait.synjsHasCallback = true;
+nsynWait.nsynjsHasCallback = true;
 
 if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     exports.nsynWait = nsynWait;
