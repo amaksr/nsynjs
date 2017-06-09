@@ -11,7 +11,7 @@ QUnit.test("nsynjs", function( assert ) {
     return thenable;
 });
 
-var testModules = [test00, test01, test02, test03, test04, test05, test06];
+var testModules = [test00, test01, test02, test03, test04, test05, test06, test07];
 var tm=0, s=0;
 function runTest(resolve,reject) {
     var testMod = testModules[tm];

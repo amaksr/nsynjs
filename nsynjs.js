@@ -5,7 +5,7 @@
  * @module nsynjs
  * @author Alexei Maximov amaksr
  * @licence AGPLv3
- * @version 0.0.8
+ * @version 0.0.9
  */
 (function(exports){
     if(!exports.console)
@@ -134,14 +134,14 @@
             if(msg) {
                 res.push("nsynjs error at "+name);
                 if(state===this) {
-                    if(msg.prevLine) res.push('>'+msg.prevLine);
-                    res.push('>'+msg.currLine);
-                    res.push('>'+msg.carrot+" <<< "+e);
-                    if(msg.nextLine) res.push('>'+msg.nextLine);
+                    if(msg.prevLine) res.push((msg.lineNo-1)+'>'+msg.prevLine);
+                    res.push(msg.lineNo+'>'+msg.currLine);
+                    res.push(msg.lineNo+'>'+msg.carrot+" <<< "+e);
+                    if(msg.nextLine) res.push((msg.lineNo+1)+'>'+msg.nextLine);
                 }
                 else {
-                    res.push('>'+msg.currLine);
-                    res.push('>'+msg.carrot);
+                    res.push(msg.lineNo+'>'+msg.currLine);
+                    res.push(msg.lineNo+'>'+msg.carrot);
                 }
             }
             else
@@ -1382,11 +1382,25 @@
         if(!f.nsynjsBin) {
             state.destructor = null;
             state.doNotWait = false;
-            state.buf = new ValRef(state,ValRef.TypeValue,this.ref.get(state,f,params));
+            var retVal = this.ref.get(state,f,params);
+            state.buf = new ValRef(state,ValRef.TypeValue,retVal);
             state.stack.pop();
-            if(!f.nsynjsHasCallback || state.doNotWait)
+            if(f.nsynjsHasCallback)
+                if(state.doNotWait)
+                    return true;
+                else
+                    return false;
+            if(retVal && retVal.then) {
+                retVal.then(function (res) {
+                    state.buf = new ValRef(state, ValRef.TypeValue, {data: res});
+                    state.resume();
+                }, function (err) {
+                    state.resume(err);
+                });
+                return false;
+            }
+            else
                 return true;
-            return false;
         }
         stackEl.nxt = this.executeStep2;
         state.funcStart(f,stackEl.ctx,params[1]);
@@ -1507,11 +1521,25 @@
             this.params && params.unshift(this);
             state.destructor = null;
             state.doNotWait = false;
-            state.buf = new ValRef(state,ValRef.TypeValue,this.ref.get(state,f,params));
+            var retVal = this.ref.get(state,f,params);
+            state.buf = new ValRef(state,ValRef.TypeValue,retVal);
             state.stack.pop();
-            if(!f.nsynjsHasCallback || state.doNotWait)
+            if(f.nsynjsHasCallback)
+                if(state.doNotWait)
+                    return true;
+                else
+                    return false;
+            if(retVal && retVal.then) {
+                retVal.then(function (res) {
+                    state.buf = new ValRef(state, ValRef.TypeValue, {data: res});
+                    state.resume();
+                }, function (err) {
+                    state.resume(err);
+                });
+                return false;
+            }
+            else
                 return true;
-            return false;
         }
         stackEl.nxt = this.executeStep2;
         state.funcStart(f, stackEl.ctx, params, true);
@@ -2572,12 +2600,17 @@
             prev = cur;
             cur += lines[i].length+1;
             if(cur>=idx) {
-                return {
-                    prevLine: lines[i-1].replace(/[\n\r]/g, ''),
+                var ret = {
                     currLine: lines[i].replace(/[\n\r]/g, ''),
-                    nextLine: lines[i+1].replace(/[\n\r]/g, ''),
                     carrot: (new Array(idx-prev+1).join(' '))+'^',
-                }
+                    lineNo: i,
+                    charNo: idx-prev+1
+                };
+                if(i-1>=0)
+                    ret.prevLine = lines[i-1].replace(/[\n\r]/g, '');
+                if(i+1<lines.length)
+                    ret.nextLine = lines[i+1].replace(/[\n\r]/g, '')
+                return ret;
             }
         }
     }

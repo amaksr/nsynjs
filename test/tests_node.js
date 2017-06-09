@@ -10,8 +10,10 @@ var test02 = require('./test02-tryCatch');
 var test03 = require('./test03-closure');
 var test04 = require('./test04-array');
 var test05 = require('./test05-delete');
+var test06 = require('./test06-new');
+var test07 = require('./test07-promise-wait');
 
-var testModules = [test00, test01, test02, test03, test04, test05];
+var testModules = [test00, test01, test02, test03, test04, test05, test06, test07];
 var tm=0, s=0;
 
 runTest();

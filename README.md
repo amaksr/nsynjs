@@ -84,7 +84,11 @@ In browser:
     
     <script src="nsynjs.js"></script>
 
-### Step 2. Wrap all functions with callbacks into nsynjs-aware wrappers ###
+### Step 2. Wrap all functions with callbacks into nsynjs-aware wrappers or promises ###
+
+If all your asynchronous functions return promises, you can skip this step.
+
+If some functions are returning results via callbacks, you can either promisify them, or wrap into nsynjs-aware wrapper.
 
 Here is an example of wrapper to setTimeout function:
 ```javascript
@@ -114,6 +118,14 @@ Another example - wrapper to jQuery's getJSON(), that can return data or throw a
     };
     ajaxGetJson.nsynjsHasCallback = true; // <<-- indicates that nsynjs should stop and wait on evaluating this function
 ```
+
+##### Q: Promises or nsynjs-aware wrappers? #####
+
+Many async functions already have promisified versions, so you can just use them in your synchronous code.
+
+However, if you want to be able to stop pseudo-threads gracefully and with proper cleaning,
+ you should use nsynjs-aware wrappers, because they provide mechanism
+ to terminate active underlying functions (e.g. terminate setTimeout timer with clearTimeout).
 
 [More on wrappers](https://github.com/amaksr/nsynjs/wiki/Wrappers)
 
