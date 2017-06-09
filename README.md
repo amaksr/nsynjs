@@ -117,7 +117,7 @@ Another example - wrapper to jQuery's getJSON(), that can return data or throw a
 
 [More on wrappers](https://github.com/amaksr/nsynjs/wiki/Wrappers)
 
-[Wrapper included with nsynjs](http://htmlpreview.github.io/?https://github.com/amaksr/nsynjs/blob/master/docs/index.html)
+[Wrappers included with nsynjs](http://htmlpreview.github.io/?https://github.com/amaksr/nsynjs/blob/master/docs/index.html)
 
 ### Step 3. Write your synchronous code ###
 
