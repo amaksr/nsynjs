@@ -3,7 +3,12 @@
  */
 
 /**
- * Cancellable wrapper for jQuery.getJSON (browser)
+ * wrappers for jQuery AJAX functions
+ * @module jQueryGetJSON
+ */
+
+/**
+ * Cancellable wrapper for jQuery.getJSON (browser).
  * Retrieves URL as JSON and returns it as an object
  *
  * @param {State} ctx Context of nsynjs-executed caller, accessible via built-in variable

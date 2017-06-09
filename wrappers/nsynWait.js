@@ -2,8 +2,10 @@
  * Created by amaksr on 6/2/2017.
  */
 
+/** @module nsynWait */
+
 /**
- * Cancellable wrapper for setTimeout (node and browser)
+ * Cancellable wrapper for setTimeout (node and browser).
  * Delays execution of nsynjs-executed caller by given number of milliseconds
  *
  * @param {State} ctx Context of nsynjs-executed caller, accessible via built-in variable

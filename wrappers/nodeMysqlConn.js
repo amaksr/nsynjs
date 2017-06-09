@@ -3,6 +3,11 @@
  */
 
 /**
+ *  Wrappers for "mysql" module for node.js
+ *  @module nodeMysqlConn
+ */
+
+/**
  * Cancellable wrapper for mysql#connection#query (node)
  * Returns object with following properties
  * - 'data' set to content result set in case of success
