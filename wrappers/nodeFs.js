@@ -494,3 +494,22 @@ exports.close = function (ctx,fd) {
 };
 exports.close.nsynjsHasCallback = true;
 
+/**
+ * Wrapper for fs.writeFile (node)
+ *
+ * @param {State} ctx Context of nsynjs-executed caller, accessible via built-in variable
+ * @param {String|buffer|number} file - file path, descriptor or buffer to write to
+ * @param {String|buffer|Uint8Array} data - Data to write
+ * @param {Object} options
+ * @throws {exception}
+ */
+exports.writeFile = function (ctx,file,data,options) {
+    var res={};
+    fs.writeFile( file, data, options, function( error , data ){
+        if( error ) res.error = error;
+        res.data = data;
+        ctx.resume(error);
+    } );
+    return res;
+};
+exports.writeFile.nsynjsHasCallback = true;
