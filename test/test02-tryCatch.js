@@ -18,7 +18,55 @@
                         trace.push('step 630');
                     }
                     catch (e) {
-                        trace.push('step 640');
+                        trace.push('step 641');
+                        trace.push('step 650');
+                        throw "123";
+                        trace.push('step 660');
+                    }
+                }
+                catch (e2) {
+                    try {
+                        trace.push('step 620');
+                        myFunc1();
+                        trace.push('step 630');
+                    }
+                    catch (e) {
+                        trace.push('step 642');
+                        return [e,e2];
+                        trace.push('step 660');
+                    }
+                    trace.push('step 610');
+                }
+
+            },
+            function (trace) {
+                try {
+                    nonexistent();
+                }
+                catch (e2) {
+                    try {
+                        myFunc1();
+                    }
+                    catch (e) {
+                        return e2;
+                    }
+                }
+
+            },
+            function (trace) {
+                var myFunc1=function(a,b,c) {
+                    nonExistent();
+                };
+
+                try {
+                    trace.push('step 610');
+                    try {
+                        trace.push('step 620');
+                        myFunc1();
+                        trace.push('step 630');
+                    }
+                    catch (e) {
+                        trace.push('step 643');
                         trace.push('step 650');
                         throw "123";
                         trace.push('step 660');
@@ -44,7 +92,7 @@
                 return k+1000;
             },
             function (trace) {
-                var k=0;
+                var k=00;
                 try {
                     k++;
                     nonexistent;
@@ -56,7 +104,7 @@
                 return k;
             },
             function (trace) {
-                var k=0;
+                var k=000;
                 try {
                     k++;
                     nonexistent;
@@ -141,6 +189,27 @@
                 return i*j;
             },
             function (trace) {
+                label_1: for(var i=0; i<5; i++) {
+                    for (var j = 0; j < 3; j++) {
+                        trace.push('step 170',[i,j]);
+                        try {
+                            trace.push('step 171',[i,j]);
+                            if (i == 2 && j == 2)
+                                nonexistent();
+                            trace.push('step 172',[i,j]);
+                        }
+                        catch (e) {
+                            trace.push('step 173',[i,j]);
+                            continue;
+                            trace.push('step 174',[i,j]);
+                        }
+                        trace.push('step 175',[i,j]);
+                    }
+                    trace.push('step 176',[i,j]);
+                }
+                return i*j;
+            },
+            function (trace) {
                 lable_1: {
                     try {
                         trace.push(['step 046 before 2nd try']);
@@ -157,7 +226,7 @@
                     }
                     catch (e) {
                         trace.push(['step 0461',e]);
-                        var k=0;
+                        var k=-0;
                         try {
                             k++;
                             nonexistent;

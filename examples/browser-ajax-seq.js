@@ -5,7 +5,13 @@
 function process() {
     var log = $('#log');
     log.append("<div>Started...</div>");
-    var data = jQueryGetJSON(nsynjsCtx, "data/index.json").data;
+    try {
+        var data = jQueryGetJSON(nsynjsCtx, "data/index.json").data;
+    }
+    catch (e) {
+        console.log("error getting data/index.json:", e.statusText);
+        data = [];
+    }
     log.append("<div>Length: "+data.length+"</div>");
     for(k=0; k<200; k++)
         for(var i in data) {

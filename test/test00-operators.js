@@ -6,11 +6,11 @@
     var steps = function () {
         return [
             function (trace, paramA, paramB) {
-                return [typeof zzz,];
-            },
-            function (trace, paramA, paramB) {
                 var a;
                 return typeof(a="string");
+            },
+            function (trace, paramA, paramB) {
+                return [typeof zzz,];
             },
             function (trace, paramA, paramB) {
                 var a;

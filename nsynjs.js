@@ -5,7 +5,7 @@
  * @module nsynjs
  * @author Alexei Maximov amaksr
  * @licence AGPLv3
- * @version 0.0.9
+ * @version 0.1.1
  */
 (function(exports){
     if(!exports.console)
@@ -53,7 +53,7 @@
         for(var i=0; i<nsynjsBin.params.children().length; i++)
             this.localVars[nsynjsBin.params.children()[i].value] = params[i];
         for(i in nsynjsBin.funDecls)
-            this.localVars[i] = nsynjsBin.funDecls[i];
+            this.localVars[i] = nsynjsBin.funDecls[i].fn;
         this.localVars['nsynjsCtx'] = this;
         this.localVars['arguments'] = params;
     };
@@ -119,7 +119,8 @@
                 }
             }
             catch (e) {
-                state.throwException("\n"+state.formatStackTrace(e));
+                console.error(state.formatStackTrace(e));
+                state.throwException(e);
             }
         }
     };
@@ -128,7 +129,7 @@
         var res = [];
         var state = this;
         do {
-            var src = state.getRootClosure().nsynjsBin.src;
+            var src = getRootClosure(state.stack.last().program.clsr).src;
             var name = state.nsynjsBin.name || '<anonymous>';
             var msg = findLine(src,state.stack.last().program.start);
             if(msg) {
@@ -147,18 +148,19 @@
             else
                 res.push('Source not available');
         } while (state = state.callerState);
+        res.push(e.stack);
         return res.join("\n");
     };
 
-    State.prototype.getRootClosure = function () {
-        var s=this;
-        while(s.parent)
-            s=s.parent;
+    getRootClosure = function (clsr) {
+        var s=clsr;
+        while(s.clsr)
+            s=s.clsr;
         return s;
     };
 
     State.prototype.funcStart = function (funcPtr, ctx, params, isConstructor) {
-        var newState = new State(Syn.stateSeq, funcPtr.nsynjsBin, ctx, null, params, funcPtr.clsr, this);
+        var newState = new State(Syn.stateSeq, funcPtr.nsynjsBin, ctx, null, params, funcPtr.nsynjsBin.clsr, this);
         newState.isConstructor = isConstructor;
         this.calledState = newState;
         this.rootState.curCalledState = newState;
@@ -403,7 +405,7 @@
     StmtForIn.prototype.parse = function (str,idx) {
         this.start = idx;
         idx = ss(str,idx+3);
-        if(ch1(str,idx) !=  '(')
+        if(ch1(str,idx) !==  '(')
             throw "expected  '('";
         idx = ss(str,idx+1);
         this.key = new OperandPath(this.clsr,null);
@@ -412,7 +414,7 @@
             idx = ss(str,idx+3);
         }
         idx = this.key.parse(str,idx);
-        if(this.key.inVar && this.key.children().length==1 && this.key.children()[0].t=='Lit') {
+        if(this.key.inVar && this.key.children().length===1 && this.key.children()[0].t==='Lit') {
             this.clsr.varDefs[this.key.children()[0].value] = this.key;
             this.key.children()[0].inVar = true;
         }
@@ -585,6 +587,10 @@
             stmt = new StmtBlock(clsr);
         else if(startingWith(str,idx,'var'))
             stmt = new StmtVar(clsr);
+        else if(startingWith(str,idx,'let'))
+            throw "'let' is not implemented";
+        else if(startingWith(str,idx,'const'))
+            throw "'const' is not implemented";
         else if(startingWith(str,idx,'if'))
             stmt = new StmtIf(clsr);
         else if(startingWith(str,idx,'for')) {
@@ -625,6 +631,7 @@
         stmt.label = label;
         stmt.qLbl = label?(label+":"):"";
         stmt.labelSkip = labelSkip;
+        clsr.inferred = "";
         return stmt;
 
     }
@@ -865,13 +872,10 @@
         idx = this.expr.parse(str,idx);
         idx = skipOptSemicolon(str,idx);
         this.src = str.substr(this.start,idx-this.start);
-        var e = this.expr.children();
-        if( e.length == 1 && e[0].t == 'Path'
-            && e[0].children().length == 1
-            && e[0].children()[0].t == 'Function'
-        ){
-            this.clsr.varDefs[e[0].children()[0].name] = true;
-            this.clsr.funDecls[e[0].children()[0].name] = e[0].children()[0].fn;
+        var e = Expr.simplify(this.expr);
+        if( e.t === 'Function' && e.name ){
+            this.clsr.varDefs[e.name] = true;
+            this.clsr.funDecls[e.name] = e;
         }
         return idx;
     };
@@ -894,7 +898,7 @@
     StmtGoto.prototype.parse = function(str,idx) {
         this.start = idx;
         idx = ss(str,idx+"nsynjs.goto".length);
-        if(ch1(str,idx) != "(")
+        if(ch1(str,idx) !== "(")
             throw "expected (";
         idx = ss(str,idx+1);
         this.expr = new Expr(this.clsr);
@@ -951,21 +955,24 @@
         this.qSrc = this.qLbl + this.src;
         return false;
 	};
-	StmtBreak.prototype.execute = function(state) {
+    StmtBreak.prototype.execute = function(state) {
         var s = state, c=this.clsr;
-        while(s.stack.length > 0) {
-            var e = s.stack.pop();
+        while(true) {
+            while(s.stack.length > 0) {
+                var e = s.stack.pop();
+                if(!this.targetLabel && e.program.breakable
+                    || this.targetLabel && e.program.label == this.targetLabel)
+                    return;
+            }
             if(c.parseCatch) {
                 s.stack = [];
-                s=s.parent;
+                s=s.callerState;
                 c=c.clsr;
-                continue;
             }
-            if(!this.targetLabel && e.program.breakable || this.targetLabel && e.program.label == this.targetLabel)
-                return;
+            else
+                throw "Illegal break";
         }
-        throw "Illegal break";
-	};
+    };
 
     var StmtContinue = function(clsr){
         this.clsr = clsr;
@@ -992,12 +999,12 @@
         var s = state, c = this.clsr;
         while (s.stack.length > 0) {
             var e = s.stack.last();
-            if (e.program.breakable && (!this.tgtLabel || this.tgtLabel && this.tgtLabel == e.program.label))
+            if (e.program.breakable && (!this.tgtLabel || this.tgtLabel && this.tgtLabel === e.program.label))
                 return;
             s.stack.pop();
             if (c.parseCatch) {
                 s.stack = [];
-                s = s.parent;
+                s = s.parent.state;
                 c = c.clsr;
             }
         }
@@ -1033,7 +1040,7 @@
         var s = state, c=this.clsr;
         while(c.parseCatch) {
             s.stack = [];
-            s=s.parent;
+            s=s.callerState;
             c=c.clsr;
         }
         s.stack = [];
@@ -1243,13 +1250,13 @@
             if(!OperandFunDef.test(str,idx))
                 throw "expected 'function'";
             idx = ss(str,idx+8);
-            if(str.charAt(idx) != "(") {
+            if(str.charAt(idx) !== "(") {
                 this.name = parseVarname(str,idx);
                 idx +=this.name.length;
                 idx = ss(str,idx);
             }
         }
-        if(ch1(str,idx) != "(" )
+        if(ch1(str,idx) !== "(" )
             throw "expected '('";
         idx = ss(str,idx+1);
         this.params = new OperandList(this,OperandLit);
@@ -1274,22 +1281,25 @@
         for(var v=0; v<this.varUses.length; v++) {
             var vu=this.varUses[v];
             var ref={};
-            if(vu.value == 'this')
+            if(vu.value === 'this')
                 vu.acc = 'state.userThisCtx';
-            else if(vu.value == 'arguments')
+            else if(vu.value === 'arguments')
                 vu.acc = 'state.localVars.arguments';
             else {
                 var f=false;
-                vu.acc="";
+                var acc="";
                 for(var l=this; l; l=l.clsr) {
                     if(l.varDefs[vu.value]) {
                         f=true;
                         break;
                     }
-                    vu.acc="parent."+vu.acc;
+                    if(acc)
+                        acc += "clsr.";
+                    else
+                        acc = "state.nsynjsBin.";
                 }
                 if(f)
-                    vu.acc = "state."+vu.acc+"localVars."+vu.value;
+                    vu.acc = acc+"state.localVars."+vu.value;
                 else
                     vu.acc = vu.value;
 
@@ -1313,15 +1323,16 @@
         if(!this.operatorBlock.optimize())
             res = false;
         if(this.parseCatch)
-            this.qSrc = "catch("+this.params.qSrc+")"+this.operatorBlock.qSrc;
+            this.qSrc = "catch("+ps+")"+this.operatorBlock.qSrc;
         else
-            this.qSrc = "function "+this.name+'('+this.params.qSrc+')'+this.operatorBlock.qSrc;
-        if(res && !this.parseCatch)
-            eval("this.fn = "+this.qSrc);
+            this.qSrc = "function "+this.name+'('+ps+')'+this.operatorBlock.qSrc;
+        eval("this.fn = function "+this.name+"(){ throw 'Function \""+this.name+"\" is intended to be called via nsynjs'}");
+        this.fn.nsynjsBin = this;
+
         return false;
     };
     OperandFunDef.prototype.execute = function(state) {
-        this.fn.clsr = state;
+        this.state = state;
         state.buf=new ValRef(state,ValRef.TypeValue,this.fn);
     };
 
@@ -1330,7 +1341,7 @@
         this.clsr = clsr;
     };
     OperandPathAccessFun.test = function(str,idx) {
-        return ch1(str,idx) == '('
+        return ch1(str,idx) === '('
     };
     OperandPathAccessFun.prototype.parse = function(str,idx) {
         this.start=idx;
@@ -1366,7 +1377,7 @@
             ctx: ctx,
             nxt: this.executeStep1
         });
-        this.params && this.params.execute(state);
+        this.params && this.params.children && this.params.children().length && this.params.execute(state);
     };
     OperandPathAccessFun.prototype.executeStep = function(state,stackEl) {
         return stackEl.nxt.call(this,state,stackEl);
@@ -1416,7 +1427,7 @@
         this.clsr = clsr;
     };
     OperandPathAccessIdx.test = function(str,idx) {
-        return ch1(str,idx) == '['
+        return ch1(str,idx) === '['
     };
     OperandPathAccessIdx.prototype.parse = function(str,idx) {
         this.start=idx;
@@ -1476,7 +1487,7 @@
 
         idx = this.expr.parse(str,idx);
         idx=ss(str,idx);
-        if(ch1(str,idx)=='(') {
+        if(ch1(str,idx)==='(') {
             idx=ss(str,idx+1);
             this.params = new OperandList(this.clsr);
             idx = this.params.parse(str,idx);
@@ -1525,10 +1536,7 @@
             state.buf = new ValRef(state,ValRef.TypeValue,retVal);
             state.stack.pop();
             if(f.nsynjsHasCallback)
-                if(state.doNotWait)
-                    return true;
-                else
-                    return false;
+                return state.doNotWait;
             if(retVal && retVal.then) {
                 retVal.then(function (res) {
                     state.buf = new ValRef(state, ValRef.TypeValue, {data: res});
@@ -1594,11 +1602,11 @@
         if(!prev)
             throw "expected value";
         idx = prev.parse(str,prev.skipTo);
-        if(prev.t == 'Lit') {
+        if(prev.t === 'Lit') {
             prev.inVar = this.inVar;
             this.clsr.varUses.push(prev);
         }
-        else if(prev.t == 'Function')
+        else if(prev.t === 'Function')
             this.clsr.funcs.push(prev);
 
         this.path.push(prev);
@@ -1606,21 +1614,22 @@
         var nxt,f=false;
         while(idx < str.length || f) {
             var c = ch1(str,idx);
-            if(c=='.') {
+            if(c==='.') {
                 nxt = new OperandLit(prev,this.path.last());
                 idx++;
             }
-            else if(c=='(') {
+            else if(c==='(') {
                 if(this.inNew)
                     break;
                 nxt = new OperandPathAccessFun(prev.clsr);
             }
-            else if(c=='[')
+            else if(c==='[')
                 nxt = new OperandPathAccessIdx(prev.clsr);
             else
                 break;
             idx = nxt.parse(str,idx);
             this.path.push(nxt);
+            this.clsr.inferred = "";
             idx = ss(str, idx);
         }
         this.src = str.substr(this.start,idx-this.start);
@@ -1700,14 +1709,17 @@
             throw "expected variable name";
         this.value = parseVarname(str,idx);
         idx = ss(str, idx + this.value.length);
-        if(!this.parent && this.value == 'this')
+        if(!this.parent && this.value === 'this')
                 eval("this.ref.get = function(state,prev,idx) { return state.userThisCtx }");
-        else if (!this.parent && this.value == 'arguments')
+        else if (!this.parent && this.value === 'arguments')
                 eval("this.ref.get = function(state,prev,idx) { return state.localVars.arguments }");
         else {
             eval("this.ref.get = function(state,prev,idx) { return prev."+this.value+" }");
             eval("this.ref.set = function(state,prev,idx,v) { return prev."+this.value+"=v }");
         }
+        if(!this.parent && this.value !== 'this' && this.value !== 'arguments')
+            this.clsr.inferred = this.value;
+
         return ss(str, idx);
     };
     OperandLit.prototype.optimize = function() {
@@ -1732,16 +1744,15 @@
         while(idx < str.length) {
             idx = ss(str,idx);
             var c = ch1(str,idx);
-            if(c == ']' || c == ')') {
+            if(c === ']' || c === ')') {
                 this.src = str.substr(this.start,idx-this.start);
                 return idx;
             }
             var value = new this.type(this.clsr,1);
             idx = value.parse(str,idx);
-            //value=Expr.simplify(value);
             this.elements.push(value);
             idx = ss(str,idx);
-            if(ch1(str,idx) == ',')
+            if(ch1(str,idx) === ',')
                 idx = ss(str,idx+1);
         }
         throw "unexpected end of object";
@@ -1754,7 +1765,7 @@
             t.push(this.elements[i].qSrc)
         }
         this.qSrc = t.join(',');
-        if(res && this.type == 'Expr')
+        if(res && this.type === 'Expr')
             eval("this.execute = function(state) {state.buf = new ValRef(state,ValRef.TypeValue,["+this.qSrc+"])}");
         return res;
     };
@@ -1795,7 +1806,7 @@
         this.clsr = clsr;
     };
     OperandArr.test = function(str,idx) {
-        return ch1(str,idx) == '['
+        return ch1(str,idx) === '['
     };
     OperandArr.prototype.parse = function(str,idx) {
         if(!OperandArr.test(str,idx))
@@ -1832,7 +1843,7 @@
         this.props = [];
     };
     OperandObj.test = function(str,idx) {
-        return ch1(str,idx) == '{'
+        return ch1(str,idx) === '{'
     };
     OperandObj.prototype.parse = function(str,idx) {
         if(!OperandObj.test(str,idx))
@@ -1842,7 +1853,7 @@
         while(idx < str.length) {
             idx = ss(str,idx);
             var c = ch1(str,idx);
-            if(c == '}') {
+            if(c === '}') {
                 idx++;
                 this.src = str.substr(this.start, idx - this.start);
                 return ss(str,idx);
@@ -1858,15 +1869,16 @@
                 throw "expected object key";
             idx = key.parse(str,idx);
             keyStr = key.value;
+            this.clsr.inferred = key.value;
             idx = ss(str,idx);
-            if(ch1(str,idx)!=':')
+            if(ch1(str,idx)!==':')
                 throw "expected :";
             idx = ss(str,idx+1);
             var value = new Expr(this.clsr,1);
             idx = value.parse(str,idx);
             this.props.push(new OperandObjKVPair(keyStr, value));
             idx = ss(str,idx);
-            if(ch1(str,idx) == ',')
+            if(ch1(str,idx) === ',')
                 idx = ss(str,idx+1);
         }
         throw "unexpected end of object";
@@ -1929,7 +1941,7 @@
     ValRef.TypeValue=0;
     ValRef.TypeRef=1;
     ValRef.prototype.set = function (v) {
-        if(this.type != ValRef.TypeRef)
+        if(this.type !== ValRef.TypeRef)
             throw "incorrect assignment";
         return this.ref.set(this.state,this.prev,this.idx,v);
     };
@@ -1968,12 +1980,12 @@
         return idx;
     };
     Delete.prototype.children = function () {
-        return this.expr.children();
+        return this.expr.children && this.expr.children();
     };
     Delete.prototype.optimize = function() {
         var res = true;
         if(!this.expr.optimize()) res = false;
-        if(this.expr.t=='Lit')
+        if(this.expr.t==='Lit')
             this.qSrc = "false";
         else
             this.qSrc = "delete "+this.expr.qSrc;
@@ -2017,7 +2029,7 @@
         return idx;
     };
     Typeof.prototype.children = function () {
-        return this.expr.children();
+        return this.expr.children && this.expr.children();
     };
     Typeof.prototype.optimize = function() {
         var res = true;
@@ -2029,7 +2041,7 @@
     };
     Typeof.prototype.execute = function(state) {
         state.stack.push({
-            program:    this,
+            program:    this
         });
         this.expr.execute(state);
     };
@@ -2125,17 +2137,9 @@
             if(c==='}' || c===')' || c===']' || c===';' || c===':'
                 || startingWith(str,idx,'in') || startingWith(str,idx,'of'))
                 break;
-            if(c === '(') {
-                idx=ss(str,idx+1);
-                var e = new Expr(this.clsr);
-                idx = e.parse(str,idx);
-                idx = ss(str,idx+1);
-                this.childs.push(e);
-                continue;
-            }
             var op = new ExprTokenOp(this.clsr);
             var nxtIdx = op.parse(str,idx,this.childs.last());
-            if(nxtIdx != idx) {
+            if(nxtIdx !== idx) {
                 if(op.prio < this.minPrio)
                     break;
                 idx = nxtIdx;
@@ -2156,25 +2160,37 @@
 
                 continue;
             }
-            if(!OperandPath.test(str,idx)) {
-                break;
+            if(Expr.test(str,idx)) {
+                op  = new Expr(this.clsr);
+                idx=ss(str,idx+1);
+                idx = op.parse(str,idx);
+                idx = ss(str,idx+1);
             }
-            op = new OperandPath(this.clsr);
-            idx = op.parse(str,idx);
-            if(this.inVar && op.children().length==1 && op.children()[0].t=='Lit') {
-                var lst = this.childs.last();
-                if(!lst || lst && lst.prio <= 3 ) {
-                    if(op.children()[0].value)
-                        this.clsr.varDefs[op.children()[0].value] = op;
-                    op.inVar = true;
-                    op.children()[0].inVar = true;
+            else if(OperandPath.test(str,idx)) {
+                op = new OperandPath(this.clsr);
+                idx = op.parse(str,idx);
+                if(this.inVar && op.children().length===1 && op.children()[0].t==='Lit') {
+                    var l = this.childs.last();
+                    if(!l || l && l.prio <= 3 ) {
+                        if(op.children()[0].value)
+                            this.clsr.varDefs[op.children()[0].value] = op;
+                        op.inVar = true;
+                        op.children()[0].inVar = true;
+                    }
                 }
             }
+            else
+                break;
+
+            var s = Expr.simplify(op);
+            if(s.t==='Function' && !s.name && this.clsr.inferred)
+                s.name = this.clsr.inferred;
+
             this.childs.push(op);
             idx = ss(str,idx);
         }
         var lst = this.childs.last();
-        if(lst && lst.src==',')
+        if(lst && lst.src===',')
             this.childs.pop();
         this.src = str.substr(this.start,idx-this.start);
 
@@ -2198,8 +2214,8 @@
     };
     Expr.prototype.executeStepEvalToken = function(state,stackEl) {
         if(stackEl.childIdx >= this.childs.length) {
-            if(stackEl.ops.length == 0){
-                if(stackEl.vals.length != 1)
+            if(stackEl.ops.length === 0){
+                if(stackEl.vals.length !== 1)
                     throw "Expr eval incorrect";
                 state.stack.pop();
                 state.buf=stackEl.vals[0];
@@ -2212,7 +2228,7 @@
             return true;
         }
         stackEl.token = this.childs[stackEl.childIdx++];
-        if(stackEl.token.t!='Op') {
+        if(stackEl.token.t!=='Op') {
             stackEl.nxt = this.executeStepAfterEval;
             stackEl.token.execute(state);
         }
@@ -2242,7 +2258,8 @@
         if(stackEl.vals.length && stackEl.ops.length && stackEl.ops.last().prio >= stackEl.prio) {
             var so = stackEl.ops.pop();
             var res = so.evalFunc(state,stackEl.vals);
-            stackEl.vals.push(new ValRef(state,ValRef.TypeValue,res));
+            state.buf = new ValRef(state,ValRef.TypeValue,res);
+            stackEl.vals.push(state.buf);
         }
         else
             stackEl.nxt = stackEl.retTo;
@@ -2256,7 +2273,7 @@
             if(c.optimize) {
                 if(!c.optimize())
                     res = false;
-                if(c.t=='Expr')
+                if(c.t==='Expr')
                     this.qSrc+="("+c.qSrc+")";
                 else
                     this.qSrc+=c.qSrc;
@@ -2274,7 +2291,7 @@
     };
     Expr.simplify=function(obj) {
         var n=obj;
-        while(n.children && n.t != 'Arr' && n.t != 'Obj' && n.children() && n.children().length==1)
+        while(n.children && n.t !== 'Arr' && n.t !== 'Obj' && n.children() && n.children().length===1)
             n = n.children()[0];
         return n;
     };
@@ -2284,15 +2301,15 @@
         this.t = 'Op'
     };
     ExprTokenOp.OpTable = [
-        [   function (str,idx,prev) {return prev && ch3(str,idx) == '==='},
+        [   function (str,idx,prev) {return prev && ch3(str,idx) === '==='},
             function (state,vals) {  return vals.pop().val() === vals.pop().val()  },
             10, 3
         ],
-        [   function (str,idx,prev) {return prev && ch3(str,idx) == '!=='},
+        [   function (str,idx,prev) {return prev && ch3(str,idx) === '!=='},
             function (state,vals) {  return vals.pop().val() !== vals.pop().val()  },
             10, 3
         ],
-        [   function (str,idx,prev) {return prev && ch2(str,idx) == '+='},
+        [   function (str,idx,prev) {return prev && ch2(str,idx) === '+='},
             function (state,vals) {
                 var v=vals.pop();
                 var to=vals.pop();
@@ -2300,7 +2317,7 @@
             },
             3, 2, true
         ],
-        [   function (str,idx,prev) {return prev && ch2(str,idx) == '-='},
+        [   function (str,idx,prev) {return prev && ch2(str,idx) === '-='},
             function (state,vals) {
                 var v=vals.pop();
                 var to=vals.pop();
@@ -2308,7 +2325,7 @@
             },
             3, 2, true
         ],
-        [   function (str,idx,prev) {return prev && ch2(str,idx) == '*='},
+        [   function (str,idx,prev) {return prev && ch2(str,idx) === '*='},
             function (state,vals) {
                 var v=vals.pop();
                 var to=vals.pop();
@@ -2316,7 +2333,7 @@
             },
             3, 2, true
         ],
-        [   function (str,idx,prev) {return prev && ch2(str,idx) == '/='},
+        [   function (str,idx,prev) {return prev && ch2(str,idx) === '/='},
             function (state,vals) {
                 var v=vals.pop();
                 var to=vals.pop();
@@ -2324,7 +2341,7 @@
             },
             3, 2, true
         ],
-        [   function (str,idx,prev) {return prev && ch2(str,idx) == '%='},
+        [   function (str,idx,prev) {return prev && ch2(str,idx) === '%='},
             function (state,vals) {
                 var v=vals.pop();
                 var to=vals.pop();
@@ -2332,7 +2349,7 @@
             },
             3, 2, true
         ],
-        [   function (str,idx,prev) {return prev && ch2(str,idx) == '<<'},
+        [   function (str,idx,prev) {return prev && ch2(str,idx) === '<<'},
             function (state,vals) {
                 var v=vals.pop();
                 var to=vals.pop();
@@ -2340,7 +2357,7 @@
             },
             12, 2, true
         ],
-        [   function (str,idx,prev) {return prev && ch2(str,idx) == '>>'},
+        [   function (str,idx,prev) {return prev && ch2(str,idx) === '>>'},
             function (state,vals) {
                 var v=vals.pop();
                 var to=vals.pop();
@@ -2348,7 +2365,7 @@
             },
             12, 2, true
         ],
-        [   function (str,idx,prev) {return prev && ch2(str,idx) == '&='},
+        [   function (str,idx,prev) {return prev && ch2(str,idx) === '&='},
             function (state,vals) {
                 var v=vals.pop();
                 var to=vals.pop();
@@ -2356,7 +2373,7 @@
             },
             3, 2, true
         ],
-        [   function (str,idx,prev) {return prev && ch2(str,idx) == '|='},
+        [   function (str,idx,prev) {return prev && ch2(str,idx) === '|='},
             function (state,vals) {
                 var v=vals.pop();
                 var to=vals.pop();
@@ -2364,7 +2381,7 @@
             },
             3, 2, true
         ],
-        [   function (str,idx,prev) {return prev && ch2(str,idx) == '^='},
+        [   function (str,idx,prev) {return prev && ch2(str,idx) === '^='},
             function (state,vals) {
                 var v=vals.pop();
                 var to=vals.pop();
@@ -2372,21 +2389,21 @@
             },
             3, 2, true
         ],
-        [   function (str,idx,prev) {return (!prev || prev.t=='Op') && ch2(str,idx) == '++'},
+        [   function (str,idx,prev) {return (!prev || prev.t==='Op') && ch2(str,idx) === '++'},
             function (state,vals) {
                 var h=vals.pop();
                 return h.set(h.val()+1);
             },
             16, 2
         ],
-        [   function (str,idx,prev) {return (!prev || prev.t=='Op') && ch2(str,idx) == '--'},
+        [   function (str,idx,prev) {return (!prev || prev.t==='Op') && ch2(str,idx) === '--'},
             function (state,vals) {
                 var h=vals.pop();
                 return h.set(h.val()-1);
             },
             16, 2
         ],
-        [   function (str,idx,prev) {return (prev && prev.t!='Op') && ch2(str,idx) == '++'},
+        [   function (str,idx,prev) {return (prev && prev.t!=='Op') && ch2(str,idx) === '++'},
             function (state,vals) {
                 var h=vals.pop();
                 var r=h.val();
@@ -2395,7 +2412,7 @@
             },
             16, 2
         ],
-        [   function (str,idx,prev) {return (prev && prev.t!='Op') && ch2(str,idx) == '--'},
+        [   function (str,idx,prev) {return (prev && prev.t!=='Op') && ch2(str,idx) === '--'},
             function (state,vals) {
                 var h=vals.pop();
                 var r=h.val();
@@ -2404,75 +2421,75 @@
             },
             16, 2
         ],
-        [   function (str,idx,prev) {return prev && ch2(str,idx) == '=='},
+        [   function (str,idx,prev) {return prev && ch2(str,idx) === '=='},
             function (state,vals) {  return vals.pop().val() == vals.pop().val()  },
             10, 2
         ],
-        [   function (str,idx,prev) {return prev && ch2(str,idx) == '!='},
+        [   function (str,idx,prev) {return prev && ch2(str,idx) === '!='},
             function (state,vals) {  return vals.pop().val() != vals.pop().val()  },
             10, 2
         ],
-        [   function (str,idx,prev) {return prev && ch2(str,idx) == '&&'},
+        [   function (str,idx,prev) {return prev && ch2(str,idx) === '&&'},
             function (state,vals) { var p=vals.pop().val(); return vals.pop().val()&&p },
             6, 2
         ],
-        [   function (str,idx,prev) {return prev && ch2(str,idx) == '||'},
+        [   function (str,idx,prev) {return prev && ch2(str,idx) === '||'},
             function (state,vals) { var p=vals.pop().val(); return vals.pop().val()||p },
             5, 2
         ],
-        [   function (str,idx,prev) {return prev && ch2(str,idx) == '<='},
+        [   function (str,idx,prev) {return prev && ch2(str,idx) === '<='},
             function (state,vals) {  return vals.pop().val() >= vals.pop().val()  },
             14, 2
         ],
-        [   function (str,idx,prev) {return prev && ch2(str,idx) == '>='},
+        [   function (str,idx,prev) {return prev && ch2(str,idx) === '>='},
             function (state,vals) {  return vals.pop().val() <= vals.pop().val()  },
             14, 2
         ],
-        [   function (str,idx,prev) {return (!prev || prev.t=='Op') && ch1(str,idx) == '!'},
+        [   function (str,idx,prev) {return (!prev || prev.t==='Op') && ch1(str,idx) === '!'},
             function (state,vals) {  return !vals.pop().val()  },
             16, 1
         ],
-        [   function (str,idx,prev) {return (!prev || prev.t=='Op') && ch1(str,idx) == '~'},
+        [   function (str,idx,prev) {return (!prev || prev.t==='Op') && ch1(str,idx) === '~'},
             function (state,vals) {  return ~vals.pop().val()  },
             16, 1
         ],
-        [   function (str,idx,prev) {return (!prev || prev.t=='Op') && ch1(str,idx) == '-'},
+        [   function (str,idx,prev) {return (!prev || prev.t==='Op') && ch1(str,idx) === '-'},
             function (state,vals) {  return -vals.pop().val()  },
             16, 1
         ],
-        [   function (str,idx,prev) {return (!prev || prev.t=='Op') && ch1(str,idx) == '+'},
+        [   function (str,idx,prev) {return (!prev || prev.t==='Op') && ch1(str,idx) === '+'},
             function (state,val) {  return val.pop().val()  },
             16, 1
         ],
-        [   function (str,idx,prev) {return prev && ch1(str,idx) == '*'},
+        [   function (str,idx,prev) {return prev && ch1(str,idx) === '*'},
             function (state,vals) {  return vals.pop().val()*vals.pop().val()  },
             14, 1
         ],
-        [   function (str,idx,prev) {return prev && ch1(str,idx) == '/'},
+        [   function (str,idx,prev) {return prev && ch1(str,idx) === '/'},
             function (state,vals) { var p=vals.pop().val(); return vals.pop().val()/p  },
             14, 1
         ],
-        [   function (str,idx,prev) {return prev && ch1(str,idx) == '%'},
+        [   function (str,idx,prev) {return prev && ch1(str,idx) === '%'},
             function (state,vals) { var p=vals.pop().val(); return vals.pop().val()%p  },
             14, 1
         ],
-        [   function (str,idx,prev) {return prev && ch1(str,idx) == '+'},
+        [   function (str,idx,prev) {return prev && ch1(str,idx) === '+'},
             function (state,vals) {  var p=vals.pop().val(); return vals.pop().val()+p  },
             13, 1
         ],
-        [   function (str,idx,prev) {return prev && ch1(str,idx) == '-'},
+        [   function (str,idx,prev) {return prev && ch1(str,idx) === '-'},
             function (state,vals) { var p=vals.pop().val(); return vals.pop().val()-p  },
             13, 1
         ],
-        [   function (str,idx,prev) {return prev && ch1(str,idx) == '<'},
+        [   function (str,idx,prev) {return prev && ch1(str,idx) === '<'},
             function (state,vals) {  return vals.pop().val() > vals.pop().val()  },
             14, 1
         ],
-        [   function (str,idx,prev) {return prev && ch1(str,idx) == '>'},
+        [   function (str,idx,prev) {return prev && ch1(str,idx) === '>'},
             function (state,vals) {  return vals.pop().val() < vals.pop().val()  },
             14, 1
         ],
-        [   function (str,idx,prev) {return prev && ch1(str,idx) == '='},
+        [   function (str,idx,prev) {return prev && ch1(str,idx) === '='},
             function (state,vals) {
                 var v=vals.pop();
                 var to=vals.pop();
@@ -2480,11 +2497,11 @@
             },
             3, 1, true
         ],
-        [   function (str,idx,prev) {return prev && ch1(str,idx) == ','},
+        [   function (str,idx,prev) {return prev && ch1(str,idx) === ','},
             function (state,vals) {  var p=vals.pop().val(); vals.pop(); return p },
             0, 1
         ],
-        [   function (str,idx,prev) {return prev && ch1(str,idx) == '?'},
+        [   function (str,idx,prev) {return prev && ch1(str,idx) === '?'},
             function (state,vals) {  var p=vals.pop().val(); vals.pop(); return p },
             4, 1
         ]
@@ -2506,10 +2523,10 @@
     };
 
     function skipComment(str, idx) {
-        if(str.substr(idx,2) == '//') {
+        if(str.substr(idx,2) === '//') {
             idx = skipSLComment(str,idx);
         }
-        else if(str.substr(idx,2) == '/*'){
+        else if(str.substr(idx,2) === '/*'){
             idx = skipMLComment(str,idx);
         }
         return idx;
@@ -2517,25 +2534,25 @@
 
 	function skipMLComment(str, idx) {
 		for(idx+=2; idx < str.length; idx++)
-			if(str.substr(idx,2) == "*/")
+			if(str.substr(idx,2) === "*/")
 				return idx+2;
 	};
 
 	function skipSLComment(str, idx) {
 		for(idx+=2; idx < str.length; idx++)
-			if(ch1(str,idx) == "\n")
+			if(ch1(str,idx) === "\n")
 				return idx+1;
 		return idx;
 	};
 
 	Syn._isSpace = function(s) {
-		return(s==" " || s=="\t"  || s=="\n"  || s=="\r" || s=="↵");
+		return(s===" " || s==="\t"  || s==="\n"  || s==="\r" || s==="↵");
 	};
 
 	function ss(str,idx) {
 		var s;
 		while(s = ch1(str,idx)) {
-            if(str.substr(idx,2) == '//' || str.substr(idx,2) == '/*') {
+            if(str.substr(idx,2) === '//' || str.substr(idx,2) === '/*') {
                 idx = skipComment(str,idx);
                 continue;
             }
@@ -2556,11 +2573,11 @@
 	}
 
 	function isVarnameBegin(chr) {
-		return isLetter(chr) || chr == "$" || chr == "_"
+		return isLetter(chr) || chr === "$" || chr === "_"
 	}
 
 	function isVarnameCont(chr) {
-		return isLetter(chr) || isDigit(chr) || chr == "$" || chr == "_"
+		return isLetter(chr) || isDigit(chr) || chr === "$" || chr === "_"
 	}
 
 	function ch1(str,idx) {	return str.substr(idx,1) }
@@ -2586,8 +2603,8 @@
             functionPtr.nsynjsBin.name = functionPtr.name;
         }
         var state = new State(Syn.stateSeq, functionPtr.nsynjsBin, userThisCtx, callback, params, null,null);
-        Syn.states[Syn.stateSeq] = state;
-        Syn.stateSeq++;
+        Syn.states[Syn.stateSeq++] = state;
+        functionPtr.nsynjsBin.state = state;
         functionPtr.nsynjsBin.operatorBlock.execute(state);
         state.tick();
         return state;
@@ -2609,7 +2626,7 @@
                 if(i-1>=0)
                     ret.prevLine = lines[i-1].replace(/[\n\r]/g, '');
                 if(i+1<lines.length)
-                    ret.nextLine = lines[i+1].replace(/[\n\r]/g, '')
+                    ret.nextLine = lines[i+1].replace(/[\n\r]/g, '');
                 return ret;
             }
         }
@@ -2620,7 +2637,7 @@
 		var res="";
 		for(var i=idx; i<str.length; i++) {
 			var chr = str.charAt(i);
-			if(i==idx && isVarnameBegin(chr) || i>idx && isVarnameCont(chr))
+			if(i===idx && isVarnameBegin(chr) || i>idx && isVarnameCont(chr))
 				res+=chr;
 			else
 				break;
@@ -2629,12 +2646,12 @@
 	}
 
 	function startingWith(str,idx,word) {
-		return str.substr(idx,word.length) == word && !isVarnameCont(str.substr(idx+word.length,1));
+		return str.substr(idx,word.length) === word && !isVarnameCont(str.substr(idx+word.length,1));
 	}
 
 	function skipOptSemicolon(str, idx) {
         idx = ss(str,idx);
-        if(ch1(str,idx) == ';') idx++;
+        if(ch1(str,idx) === ';') idx++;
         idx = ss(str,idx);
         return idx;
     };

@@ -78,11 +78,14 @@
                 };
             },
             function () {
-                return [ -4==4*-1 ? 'false'+'it is':'true'+'!',];
+                return [ -4==4*-1 ? 'false'+'it  is':'true 1'+'!',];
+            },
+            function () {
+                return [ !-4==4*-1 ? 'false'+'it is':'true 2'+'!',];
             },
             function () {
                 return {
-                    res: !-4==4*-1 ? 'false'+'it is':'true'+'!'
+                    res: !-4==4*-1 ? 'false'+'it is':'true 2'+'!'
                 };
             },
             function (trace, paramA, paramB) {
