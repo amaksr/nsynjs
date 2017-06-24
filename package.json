@@ -1,6 +1,6 @@
 {
   "name": "nsynjs",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Synchronous JavaScript executor",
   "main": "nsynjs.js",
   "directories": {
@@ -15,7 +15,10 @@
   },
   "keywords": [
     "synchronous",
-    "javascript"
+    "javascript",
+    "promise",
+    "async",
+    "await"
   ],
   "author": "Alexei Maximov <amaksr@gmail.com>",
   "license": "AGPLv3",

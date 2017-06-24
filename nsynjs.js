@@ -5,7 +5,7 @@
  * @module nsynjs
  * @author Alexei Maximov amaksr
  * @licence AGPLv3
- * @version 0.1.1
+ * @version 0.1.2
  */
 (function(exports){
     if(!exports.console)
@@ -91,7 +91,7 @@
             this.calledState._stop();
             this.calledState = null;
         }
-        else if(this.destructor && typeof this.destructor == 'function')
+        else if(this.destructor && typeof this.destructor === 'function')
             this.destructor();
         this.stack = [];
         this.finCb = function(){};
@@ -133,7 +133,7 @@
             var name = state.nsynjsBin.name || '<anonymous>';
             var msg = findLine(src,state.stack.last().program.start);
             if(msg) {
-                res.push("nsynjs error at "+name);
+                res.push("nsynjs runtime error at "+name);
                 if(state===this) {
                     if(msg.prevLine) res.push((msg.lineNo-1)+'>'+msg.prevLine);
                     res.push(msg.lineNo+'>'+msg.currLine);
@@ -152,7 +152,22 @@
         return res.join("\n");
     };
 
-    getRootClosure = function (clsr) {
+    function formatParseError(src,start,e) {
+        var res=[];
+        var msg = findLine(src, start);
+        if(msg) {
+            res.push("nsynjs parse error");
+            if (msg.prevLine) res.push((msg.lineNo - 1) + '>' + msg.prevLine);
+            res.push(msg.lineNo + '>' + msg.currLine);
+            res.push(msg.lineNo + '>' + msg.carrot + " <<< " + e);
+            if (msg.nextLine) res.push((msg.lineNo + 1) + '>' + msg.nextLine);
+        }
+        else
+            res.push('Source not available');
+        return res.join("\n");
+    }
+
+    function getRootClosure(clsr) {
         var s=clsr;
         while(s.clsr)
             s=s.clsr;
@@ -212,7 +227,7 @@
 	StmtIf.prototype.parse = function (str,idx) {
 	    this.start = idx;
 		idx = ss(str,idx+2);
-		if(ch1(str,idx) !=  '(')
+		if(ch1(str,idx) !==  '(')
 			throw "expected  '('";
 		idx = ss(str,idx+1);
 
@@ -341,7 +356,7 @@
     StmtWhile.prototype.parse = function (str,idx) {
         this.start = idx;
         idx = ss(str,idx+5);
-        if(ch1(str,idx) !=  '(')
+        if(ch1(str,idx) !==  '(')
             throw "expected  '('";
         idx = ss(str,idx+1);
 
@@ -498,7 +513,7 @@
 	StmtFor.prototype.parse = function (str,idx) {
         this.start = idx;
 		idx = ss(str,idx+3);
-		if(ch1(str,idx) !=  '(')
+		if(ch1(str,idx) !==  '(')
 			throw "expected  '('";
 		idx = ss(str,idx+1);
 
@@ -576,21 +591,21 @@
             var lbl = parseVarname(str,idx);
             if( lbl.length > 0 ) {
                 var j = ss(str,idx + lbl.length);
-                if(str.substr(j,1) == ':') {
+                if(str.substr(j,1) === ':') {
                     label = lbl;
                     idx = ss(str,j+1);
                     labelSkip = idx;
                 }
             }
         }
-        if(ch1(str,idx) ==  '{')
+        if(ch1(str,idx) ===  '{')
             stmt = new StmtBlock(clsr);
         else if(startingWith(str,idx,'var'))
             stmt = new StmtVar(clsr);
         else if(startingWith(str,idx,'let'))
-            throw "'let' is not implemented";
+            throw formatParseError(str,idx,"'let' is not implemented");
         else if(startingWith(str,idx,'const'))
-            throw "'const' is not implemented";
+            throw formatParseError(str,idx,"'const' is not implemented");
         else if(startingWith(str,idx,'if'))
             stmt = new StmtIf(clsr);
         else if(startingWith(str,idx,'for')) {
@@ -622,10 +637,6 @@
             stmt = new StmtTry(clsr);
         else if(startingWith(str,idx,'nsynjs.goto'))
             stmt = new StmtGoto(clsr);
-        else if(startingWith(str,idx,'let'))
-            throw "Not implemented: 'let'";
-        else if(startingWith(str,idx,'const'))
-            throw "Not implemented: 'const'";
         else
             stmt = new StmtSingle(clsr);
         stmt.label = label;
@@ -2186,6 +2197,9 @@
             if(s.t==='Function' && !s.name && this.clsr.inferred)
                 s.name = this.clsr.inferred;
 
+            if(op.t==='Path' && this.childs.length && this.childs.last().t !== 'Op') {
+                throw formatParseError(str,op.start,"Unexpected operand. Is ';' missing?");
+            }
             this.childs.push(op);
             idx = ss(str,idx);
         }
@@ -2420,6 +2434,10 @@
                 return r;
             },
             16, 2
+        ],
+        [   function (str,idx,prev) { if(ch2(str,idx) === '=>') throw formatParseError(str,idx,"Arrow functions not implemented");},
+            null,
+            null, 2
         ],
         [   function (str,idx,prev) {return prev && ch2(str,idx) === '=='},
             function (state,vals) {  return vals.pop().val() == vals.pop().val()  },
