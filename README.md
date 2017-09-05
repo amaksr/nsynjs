@@ -195,6 +195,15 @@ Parameters:
 Returns:
 - pseudo-thread execution context
 
+**nsynjs.compile(myTestFunction1)** _(function, compiles myTestFunction1 and puts it into "nsynjsBin" propery of myTestFunction1)_
+
+Parameters:
+- myTestFunction1: pointer to a function that needs to be compiled
+
+Returns:
+- none
+
+
 ### Pseudo-thread execution context reference ###
 
 Pseudo-thread execution context is available inside nsynjs-executed code via predefined variable **nsynjsCtx**.
@@ -252,18 +261,18 @@ execution of the caller may be continued.
 
 ## Under the hood ##
 
-When some function is executed via **nsynjs.run(_someFunc_,...)**, nsynjs will check if **_someFunc.synjsBin_** property exists.
+When some function is executed via **nsynjs.run(_someFunc_,...)**, nsynjs will check if **_someFunc.nsynjsBin_** property exists.
 This property holds tree-like structure that represents the code of **_someFunc_**, an is required for nsynjs to run.
 This parsing/compiling is done only once per function pointer.
 
 Whe nsynjs parses code of function, it also parses all nested function definitions. These nested functions would
-have stub body but valid **_someFunc.synjsBin_** property, as they intended to fail if called directly.
+have stub body but valid **_someFunc.nsynjsBin_** property, as they intended to fail if called directly.
 Instead, they should only be called from nsynjs-executed code.
 
 When nsynjs executes code and encounters some function call, it checks what type of function is called. There could be 3 types:
 
-- function with **_someOtherFunc.synjsBin_** property defined: these functions executed in synchronous manner by nsynjs.
-- function without **_someOtherFunc.synjsBin_** property defined
+- function with **_someOtherFunc.nsynjsBin_** property defined: these functions executed in synchronous manner by nsynjs.
+- function without **_someOtherFunc.nsynjsBin_** property defined
     - With  **_someOtherFunc.nsynjsHasCallback_** property defined: this means that someOtherFunc is nsynjs-aware wrapper,
     so nsynjs should stop and wait untill ctx.resume() is called by wrapper.
     - Without  **_someOtherFunc.nsynjsHasCallback_** property defined: these functions are executed immediately.

@@ -5,7 +5,7 @@
  * @module nsynjs
  * @author Alexei Maximov amaksr
  * @licence AGPLv3
- * @version 0.1.2
+ * @version 0.1.3
  */
 (function(exports){
     if(!exports.console)
@@ -13,11 +13,14 @@
 
     var dbg=console.log;
 
-    Array.prototype.last = function() {
-        return this[this.length-1];
+    // Array.prototype.last = function() {
+    //     return this[this.length-1];
+    // };
+    var arrayLast = function (arr) {
+        return arr[arr.length-1];
     };
 
-	var Syn = {};
+    var Syn = {};
     Syn.states = Syn.states || {};
     Syn.stateSeq = 0;
 
@@ -111,7 +114,7 @@
                 state = this;
                 continue;
             }
-            var stackEl = state.stack.last();
+            var stackEl = arrayLast(state.stack);
             try {
                 var cont = stackEl.program.executeStep.call(stackEl.program,state,stackEl);
                 if(!cont) {
@@ -129,9 +132,9 @@
         var res = [];
         var state = this;
         do {
-            var src = getRootClosure(state.stack.last().program.clsr).src;
+            var src = getRootClosure(arrayLast(state.stack).program.clsr).src;
             var name = state.nsynjsBin.name || '<anonymous>';
-            var msg = findLine(src,state.stack.last().program.start);
+            var msg = findLine(src,arrayLast(state.stack).program.start);
             if(msg) {
                 res.push("nsynjs runtime error at "+name);
                 if(state===this) {
@@ -219,35 +222,35 @@
     };
 
     var StmtIf = function(clsr) {
-		this.clsr = clsr;
+        this.clsr = clsr;
         this.src = null;
-		this.opBodyTrueBin = null;
-		this.opBodyFalseBin = null;
-	};
-	StmtIf.prototype.parse = function (str,idx) {
-	    this.start = idx;
-		idx = ss(str,idx+2);
-		if(ch1(str,idx) !==  '(')
-			throw "expected  '('";
-		idx = ss(str,idx+1);
+        this.opBodyTrueBin = null;
+        this.opBodyFalseBin = null;
+    };
+    StmtIf.prototype.parse = function (str,idx) {
+        this.start = idx;
+        idx = ss(str,idx+2);
+        if(ch1(str,idx) !==  '(')
+            throw "expected  '('";
+        idx = ss(str,idx+1);
 
         this.expr = new Expr(this.clsr);
         idx = this.expr.parse(str,idx);
-		idx = ss(str,idx+1);
+        idx = ss(str,idx+1);
 
         this.opBodyTrueBin = stmtDetect(this.clsr,str,idx,true);
         if(this.opBodyTrueBin.labelSkip) idx = this.opBodyTrueBin.labelSkip;
-		idx = this.opBodyTrueBin.parse(str,idx);
+        idx = this.opBodyTrueBin.parse(str,idx);
 
         idx = skipOptSemicolon(str,idx);
 
-		// optional else
-		if(startingWith(str,idx,'else')) {
-			idx = ss(str,idx+4);
+        // optional else
+        if(startingWith(str,idx,'else')) {
+            idx = ss(str,idx+4);
             this.opBodyFalseBin = stmtDetect(this.clsr, str,idx,true);
             if(this.opBodyFalseBin.labelSkip) idx = this.opBodyFalseBin.labelSkip;
             idx = this.opBodyFalseBin.parse(str,idx);
-		}
+        }
         this.src = str.substr(this.start,idx-this.start);
         idx = skipOptSemicolon(str,idx);
         return idx;
@@ -266,8 +269,8 @@
         if(res)
             eval("this.execute = function(state) {"+this.qSrc+"}");
         return res;
-	};
-	StmtIf.prototype.execute = function(state) {
+    };
+    StmtIf.prototype.execute = function(state) {
         state.stack.push({
             program: this
         });
@@ -501,21 +504,21 @@
     };
 
     var StmtFor = function(clsr) {
-		this.clsr = clsr;
-		this.breakable = true;
+        this.clsr = clsr;
+        this.breakable = true;
         this.src = null;
         this.label = null;
         this.expr1 = null;
         this.expr2 = null;
         this.expr3 = null;
         this.body = null;
-	};
-	StmtFor.prototype.parse = function (str,idx) {
+    };
+    StmtFor.prototype.parse = function (str,idx) {
         this.start = idx;
-		idx = ss(str,idx+3);
-		if(ch1(str,idx) !==  '(')
-			throw "expected  '('";
-		idx = ss(str,idx+1);
+        idx = ss(str,idx+3);
+        if(ch1(str,idx) !==  '(')
+            throw "expected  '('";
+        idx = ss(str,idx+1);
 
         this.expr1 = new Expr(this.clsr);
         if(startingWith(str,idx,'var')){
@@ -524,11 +527,11 @@
         }
         idx=this.expr1.parse(str,idx);
 
-		idx = ss(str,idx+1);
+        idx = ss(str,idx+1);
         this.expr2 = new Expr(this.clsr);
         idx=this.expr2.parse(str,idx);
 
-		idx = ss(str,idx+1);
+        idx = ss(str,idx+1);
         this.expr3 = new Expr(this.clsr);
         idx=this.expr3.parse(str,idx);
         idx = ss(str,idx+1);
@@ -551,19 +554,19 @@
         if(res)
             eval("this.execute=function(state){"+this.qSrc+"}")
         return res;
-	};
-	StmtFor.prototype.execute = function(state) {
-		var o = {
+    };
+    StmtFor.prototype.execute = function(state) {
+        var o = {
             nxt: this.executeStep2,
             program: this
-		};
+        };
         state.stack.push(o);
-		this.expr1.execute(state);
+        this.expr1.execute(state);
     };
     StmtFor.prototype.executeStep = function(state,stackEl) {
         return stackEl.nxt.call(this,state,stackEl);
     };
-	StmtFor.prototype.executeStep2 = function(state,stackEl) {
+    StmtFor.prototype.executeStep2 = function(state,stackEl) {
         stackEl.nxt = this.executeStep3;
         this.expr2.execute(state);
         return true;
@@ -582,7 +585,7 @@
         return true;
     };
 
-	function stmtDetect(clsr, str, idx, checkLabel) {
+    function stmtDetect(clsr, str, idx, checkLabel) {
         var stmt;
         var label;
         var labelSkip;
@@ -787,24 +790,24 @@
         this.ops = [];
         this.labels = {};
     };
-	StmtBlock.prototype.parse = function(str,idx) {
+    StmtBlock.prototype.parse = function(str,idx) {
         this.start = idx;
         idx = ss(str, idx+1);
-		while(ch1(str,idx) != '}' && idx < str.length) {
-			idx = ss(str, idx);
+        while(ch1(str,idx) != '}' && idx < str.length) {
+            idx = ss(str, idx);
             var stmt = stmtDetect(this.clsr, str, idx, true);
             if(stmt.labelSkip) idx = stmt.labelSkip;
             idx = stmt.parse(str,idx);
             if(stmt.label)
                 this.labels[stmt.label] = this.ops.length;
             this.ops.push(stmt);
-			idx = ss(str, idx);
-		};
+            idx = ss(str, idx);
+        };
         if(idx >= str.length)
             throw "unexpected end of statement";
         idx++;
         this.src = str.substr(this.start,idx-this.start);
-		return idx;
+        return idx;
     };
     StmtBlock.prototype.optimize = function () {
         var res=true;
@@ -819,12 +822,12 @@
             eval("this.execute = function(state) {var _f=function(){"+this.qSrc+"};_f.call(state.userThisCtx,state)}");
         return res;
     };
-	StmtBlock.prototype.execute = function (state) {
-		var o = {
-			pc: 0,
+    StmtBlock.prototype.execute = function (state) {
+        var o = {
+            pc: 0,
             program: this
-		};
-		state.stack.push(o);
+        };
+        state.stack.push(o);
     };
     /**
      *
@@ -832,7 +835,7 @@
      * @param stackEl
      * @returns {boolean}
      */
-	StmtBlock.prototype.executeStep = function (state,stackEl) {
+    StmtBlock.prototype.executeStep = function (state,stackEl) {
         if(stackEl.pc >= stackEl.program.ops.length) {
             state.stack.pop();
             return true;
@@ -840,14 +843,14 @@
         var stmt = stackEl.program.ops[stackEl.pc++];
         stmt.execute(state);
 
-		return true;
-	};
+        return true;
+    };
 
 
-	var StmtVar = function(clsr){
-		this.clsr = clsr;
+    var StmtVar = function(clsr){
+        this.clsr = clsr;
         this.src = null;
-	};
+    };
     StmtVar.prototype.parse = function(str,idx) {
         this.start = idx;
         idx = ss(str,idx+3);
@@ -865,20 +868,20 @@
             eval("this.execute = function(state) {"+this.qSrc+"}");
         return res;
     };
-	StmtVar.prototype.execute = function(state) {
+    StmtVar.prototype.execute = function(state) {
         this.expr.execute(state);
-	};
+    };
 
 
 
-	var StmtSingle = function(clsr){
-		this.clsr = clsr;
-		this.noCallback = true;
+    var StmtSingle = function(clsr){
+        this.clsr = clsr;
+        this.noCallback = true;
         this.src = null;
-	};
-	StmtSingle.prototype.parse = function(str,idx) {
+    };
+    StmtSingle.prototype.parse = function(str,idx) {
         this.start = idx;
-		idx = ss(str,idx);
+        idx = ss(str,idx);
         this.expr = new Expr(this.clsr);
         idx = this.expr.parse(str,idx);
         idx = skipOptSemicolon(str,idx);
@@ -896,10 +899,10 @@
         if(ret)
             eval("this.execute = function(state) {"+this.qSrc+"}");
         return ret;
-	};
-	StmtSingle.prototype.execute = function(state) {
+    };
+    StmtSingle.prototype.execute = function(state) {
         this.expr.execute(state);
-	};
+    };
 
     var StmtGoto = function(clsr){
         this.clsr = clsr;
@@ -933,7 +936,7 @@
     StmtGoto.prototype.executeStep = function(state,stackEl) {
         var lblTo = state.buf.val();
         while(state.stack.length > 0) {
-            var e = state.stack.last();
+            var e = arrayLast(state.stack);
             if(e.program.labels && e.program.labels[lblTo] >= 0){
                 e.pc = e.program.labels[lblTo];
                 return true;
@@ -946,11 +949,11 @@
 
 
     var StmtBreak = function(clsr){
-		this.clsr = clsr;
+        this.clsr = clsr;
         this.src = "";
         this.targetLabel = "";
-	};
-	StmtBreak.prototype.parse = function(str,idx) {
+    };
+    StmtBreak.prototype.parse = function(str,idx) {
         this.start = idx;
         idx = ss(str,idx+5);
         var lbl = parseVarname(str,idx);
@@ -965,7 +968,7 @@
     StmtBreak.prototype.optimize = function() {
         this.qSrc = this.qLbl + this.src;
         return false;
-	};
+    };
     StmtBreak.prototype.execute = function(state) {
         var s = state, c=this.clsr;
         while(true) {
@@ -1009,7 +1012,7 @@
     StmtContinue.prototype.execute = function(state) {
         var s = state, c = this.clsr;
         while (s.stack.length > 0) {
-            var e = s.stack.last();
+            var e = arrayLast(s.stack);
             if (e.program.breakable && (!this.tgtLabel || this.tgtLabel && this.tgtLabel === e.program.label))
                 return;
             s.stack.pop();
@@ -1206,7 +1209,7 @@
         if(c1=='.' && isDigit(ch1(str,idx+1)))
             return true;
         if(c1=='-' || c1=='')
-        return false;
+            return false;
     };
     OperandNumber.prototype.parse = function(str,idx) {
         if(!OperandNumber.test(str,idx))
@@ -1381,7 +1384,7 @@
         return false;
     };
     OperandPathAccessFun.prototype.execute = function(state,prev) {
-        var ctx=state.stack.last().ctxs.last();
+        var ctx=arrayLast(arrayLast(state.stack).ctxs);
         state.stack.push({
             program:    this,
             prev: prev,
@@ -1626,7 +1629,7 @@
         while(idx < str.length || f) {
             var c = ch1(str,idx);
             if(c==='.') {
-                nxt = new OperandLit(prev,this.path.last());
+                nxt = new OperandLit(prev,arrayLast(this.path));
                 idx++;
             }
             else if(c==='(') {
@@ -1661,7 +1664,7 @@
         }
         if(res) {
             eval("this.ref = { get: function (state, prev, idx) { return "+this.qSrc+" }}");
-            if(this.path.last().ref && this.path.last().ref.set)
+            if(arrayLast(this.path).ref && arrayLast(this.path).ref.set)
                 eval("this.ref.set=function (state, prev, idx, v) { return "+this.qSrc+" = v}");
             this.execute = function(state) {
                 state.buf = new ValRef(state,ValRef.TypeRef,null,this.ref)
@@ -1686,7 +1689,7 @@
     OperandPath.prototype.executeStep1 = function(state,stackEl) {
         if(stackEl.pc >= this.path.length) {
             var e=state.stack.pop();
-            state.buf= e.values.last();
+            state.buf= arrayLast(e.values);
             return true;
         }
         stackEl.nxt = this.executeStep2;
@@ -1721,9 +1724,9 @@
         this.value = parseVarname(str,idx);
         idx = ss(str, idx + this.value.length);
         if(!this.parent && this.value === 'this')
-                eval("this.ref.get = function(state,prev,idx) { return state.userThisCtx }");
+            eval("this.ref.get = function(state,prev,idx) { return state.userThisCtx }");
         else if (!this.parent && this.value === 'arguments')
-                eval("this.ref.get = function(state,prev,idx) { return state.localVars.arguments }");
+            eval("this.ref.get = function(state,prev,idx) { return state.localVars.arguments }");
         else {
             eval("this.ref.get = function(state,prev,idx) { return prev."+this.value+" }");
             eval("this.ref.set = function(state,prev,idx,v) { return prev."+this.value+"=v }");
@@ -1958,12 +1961,12 @@
     };
     ValRef.prototype.val = function() {
         switch(this.type) {
-        case ValRef.TypeValue:
-            return this.v;
-        case ValRef.TypeRef:
-            return this.ref.get(this.state,this.prev,this.idx);
-        default:
-            throw "unknown value type"
+            case ValRef.TypeValue:
+                return this.v;
+            case ValRef.TypeRef:
+                return this.ref.get(this.state,this.prev,this.idx);
+            default:
+                throw "unknown value type"
         }
     };
 
@@ -2149,7 +2152,7 @@
                 || startingWith(str,idx,'in') || startingWith(str,idx,'of'))
                 break;
             var op = new ExprTokenOp(this.clsr);
-            var nxtIdx = op.parse(str,idx,this.childs.last());
+            var nxtIdx = op.parse(str,idx,arrayLast(this.childs));
             if(nxtIdx !== idx) {
                 if(op.prio < this.minPrio)
                     break;
@@ -2181,7 +2184,7 @@
                 op = new OperandPath(this.clsr);
                 idx = op.parse(str,idx);
                 if(this.inVar && op.children().length===1 && op.children()[0].t==='Lit') {
-                    var l = this.childs.last();
+                    var l = arrayLast(this.childs);
                     if(!l || l && l.prio <= 3 ) {
                         if(op.children()[0].value)
                             this.clsr.varDefs[op.children()[0].value] = op;
@@ -2197,13 +2200,13 @@
             if(s.t==='Function' && !s.name && this.clsr.inferred)
                 s.name = this.clsr.inferred;
 
-            if(op.t==='Path' && this.childs.length && this.childs.last().t !== 'Op') {
+            if(op.t==='Path' && this.childs.length && arrayLast(this.childs).t !== 'Op') {
                 throw formatParseError(str,op.start,"Unexpected operand. Is ';' missing?");
             }
             this.childs.push(op);
             idx = ss(str,idx);
         }
-        var lst = this.childs.last();
+        var lst = arrayLast(this.childs);
         if(lst && lst.src===',')
             this.childs.pop();
         this.src = str.substr(this.start,idx-this.start);
@@ -2247,7 +2250,7 @@
             stackEl.token.execute(state);
         }
         else {
-            if(stackEl.ops.length && !(stackEl.ops.last().assign && stackEl.token.assign)) {
+            if(stackEl.ops.length && !(arrayLast(stackEl.ops).assign && stackEl.token.assign)) {
                 stackEl.prio = stackEl.token.prio;
                 stackEl.nxt = this.executeStepEvalStack;
                 stackEl.retTo = this.executeStepEvalToken2;
@@ -2269,7 +2272,7 @@
         return true;
     };
     Expr.prototype.executeStepEvalStack = function(state,stackEl) {
-        if(stackEl.vals.length && stackEl.ops.length && stackEl.ops.last().prio >= stackEl.prio) {
+        if(stackEl.vals.length && stackEl.ops.length && arrayLast(stackEl.ops).prio >= stackEl.prio) {
             var so = stackEl.ops.pop();
             var res = so.evalFunc(state,stackEl.vals);
             state.buf = new ValRef(state,ValRef.TypeValue,res);
@@ -2548,58 +2551,58 @@
             idx = skipMLComment(str,idx);
         }
         return idx;
-	};
+    };
 
-	function skipMLComment(str, idx) {
-		for(idx+=2; idx < str.length; idx++)
-			if(str.substr(idx,2) === "*/")
-				return idx+2;
-	};
+    function skipMLComment(str, idx) {
+        for(idx+=2; idx < str.length; idx++)
+            if(str.substr(idx,2) === "*/")
+                return idx+2;
+    };
 
-	function skipSLComment(str, idx) {
-		for(idx+=2; idx < str.length; idx++)
-			if(ch1(str,idx) === "\n")
-				return idx+1;
-		return idx;
-	};
+    function skipSLComment(str, idx) {
+        for(idx+=2; idx < str.length; idx++)
+            if(ch1(str,idx) === "\n")
+                return idx+1;
+        return idx;
+    };
 
-	Syn._isSpace = function(s) {
-		return(s===" " || s==="\t"  || s==="\n"  || s==="\r" || s==="↵");
-	};
+    Syn._isSpace = function(s) {
+        return(s===" " || s==="\t"  || s==="\n"  || s==="\r" || s==="↵");
+    };
 
-	function ss(str,idx) {
-		var s;
-		while(s = ch1(str,idx)) {
+    function ss(str,idx) {
+        var s;
+        while(s = ch1(str,idx)) {
             if(str.substr(idx,2) === '//' || str.substr(idx,2) === '/*') {
                 idx = skipComment(str,idx);
                 continue;
             }
-			if(!Syn._isSpace(s))
-				break;
-			idx++;
-		}
-		return idx;
-	}
+            if(!Syn._isSpace(s))
+                break;
+            idx++;
+        }
+        return idx;
+    }
 
-	function isLetter(chr) {
-		return "a" <= chr && chr <= "z" ||
-			"A" <= chr && chr <= "Z";
-	}
+    function isLetter(chr) {
+        return "a" <= chr && chr <= "z" ||
+            "A" <= chr && chr <= "Z";
+    }
 
-	function isDigit(chr) {
-		return "0" <= chr && chr <= "9";
-	}
+    function isDigit(chr) {
+        return "0" <= chr && chr <= "9";
+    }
 
-	function isVarnameBegin(chr) {
-		return isLetter(chr) || chr === "$" || chr === "_"
-	}
+    function isVarnameBegin(chr) {
+        return isLetter(chr) || chr === "$" || chr === "_"
+    }
 
-	function isVarnameCont(chr) {
-		return isLetter(chr) || isDigit(chr) || chr === "$" || chr === "_"
-	}
+    function isVarnameCont(chr) {
+        return isLetter(chr) || isDigit(chr) || chr === "$" || chr === "_"
+    }
 
-	function ch1(str,idx) {	return str.substr(idx,1) }
-	function ch2(str,idx) { return str.substr(idx,2) }
+    function ch1(str,idx) {	return str.substr(idx,1) }
+    function ch2(str,idx) { return str.substr(idx,2) }
     function ch3(str,idx) { return str.substr(idx,3) }
 
     /**
@@ -2611,21 +2614,30 @@
     function run(functionPtr, userThisCtx, /*param1, param2, etc*/ callback) {
         var params = Array.prototype.slice.call(arguments);
         var functionPtr = params.shift();
-        if(typeof functionPtr != 'function')
-            throw "function pointer expected";
         var userThisCtx = params.shift() || {};
         var callback = params.pop() || function () {};
-        if(!functionPtr.nsynjsBin) {
-            functionPtr.nsynjsBin = new OperandFunDef(null);
-            functionPtr.nsynjsBin.parse(functionPtr.toString(),0);
-            functionPtr.nsynjsBin.name = functionPtr.name;
-        }
+        compile(functionPtr);
         var state = new State(Syn.stateSeq, functionPtr.nsynjsBin, userThisCtx, callback, params, null,null);
         Syn.states[Syn.stateSeq++] = state;
         functionPtr.nsynjsBin.state = state;
         functionPtr.nsynjsBin.operatorBlock.execute(state);
         state.tick();
         return state;
+    }
+
+    /**
+     * Compile existing function
+     * @param {Function} functionPtr
+     */
+
+    function compile(functionPtr) {
+        if(typeof functionPtr !== 'function')
+            throw "function pointer expected";
+        if(!functionPtr.nsynjsBin) {
+            functionPtr.nsynjsBin = new OperandFunDef(null);
+            functionPtr.nsynjsBin.parse(functionPtr.toString(),0);
+            functionPtr.nsynjsBin.name = functionPtr.name;
+        }
     }
 
     function findLine(str,idx) {
@@ -2651,23 +2663,23 @@
     }
 
     function parseVarname(str,idx) {
-		idx = ss(str,idx);
-		var res="";
-		for(var i=idx; i<str.length; i++) {
-			var chr = str.charAt(i);
-			if(i===idx && isVarnameBegin(chr) || i>idx && isVarnameCont(chr))
-				res+=chr;
-			else
-				break;
-		}
-		return res;
-	}
+        idx = ss(str,idx);
+        var res="";
+        for(var i=idx; i<str.length; i++) {
+            var chr = str.charAt(i);
+            if(i===idx && isVarnameBegin(chr) || i>idx && isVarnameCont(chr))
+                res+=chr;
+            else
+                break;
+        }
+        return res;
+    }
 
-	function startingWith(str,idx,word) {
-		return str.substr(idx,word.length) === word && !isVarnameCont(str.substr(idx+word.length,1));
-	}
+    function startingWith(str,idx,word) {
+        return str.substr(idx,word.length) === word && !isVarnameCont(str.substr(idx+word.length,1));
+    }
 
-	function skipOptSemicolon(str, idx) {
+    function skipOptSemicolon(str, idx) {
         idx = ss(str,idx);
         if(ch1(str,idx) === ';') idx++;
         idx = ss(str,idx);
@@ -2675,6 +2687,7 @@
     };
 
     exports.run = run;
+    exports.compile = compile;
     exports.states = Syn.states;
     exports.isRunning = Syn.isRunning;
     exports.exists = Syn.exists;
